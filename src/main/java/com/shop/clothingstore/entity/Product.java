@@ -96,7 +96,7 @@ public class Product extends BaseEntity implements SellableItem {
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
-    @OrderBy("primaryImage DESC, id ASC")
+    @OrderBy("sortOrder ASC, primaryImage DESC, id ASC")
     private Set<ProductImage> images = new HashSet<>();
 
     // ================= INTERFACE IMPLEMENTATION =================
@@ -134,7 +134,8 @@ public class Product extends BaseEntity implements SellableItem {
     public List<ProductImage> getImages() {
         return images.stream()
                 .sorted(Comparator
-                        .comparing(ProductImage::isPrimary, Comparator.reverseOrder())
+                        .comparingInt((ProductImage img) -> img.getSortOrder() != null ? img.getSortOrder() : 0)
+                        .thenComparing(ProductImage::isPrimary, Comparator.reverseOrder())
                         .thenComparingLong(img -> img.getId() != null ? img.getId() : Long.MAX_VALUE))
                 .collect(java.util.stream.Collectors.toList());
     }

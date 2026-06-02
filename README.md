@@ -10,7 +10,7 @@
 **ClothingStore** là nền tảng thương mại điện tử bán quần áo đầy đủ tính năng, tích hợp trí tuệ nhân tạo và ứng dụng mobile. Điểm nổi bật:
 
 - **Virtual Try-On** — Thử đồ ảo bằng AI (Replicate IDM-VTON cloud → fallback CatVTON local trên GPU), thử cả bộ (áo + quần) trên ảnh cá nhân
-- **AI Chatbot** — Tư vấn bằng ngôn ngữ tự nhiên (rule-based FAQ + Ollama LLaMA 3.2, hiểu tiếng Việt)
+- **AI Chatbot** — Tư vấn bằng ngôn ngữ tự nhiên (Google Gemini + function calling, truy vấn DB thật, hiểu tiếng Việt)
 - **Flutter Mobile App** — Ứng dụng iOS/Android đầy đủ tính năng (Riverpod + Dio + JWT)
 - **Real-time Notifications** — SSE (Server-Sent Events) cho thông báo đơn hàng tức thì
 - **Full-text Search** — MySQL FULLTEXT INDEX + autocomplete gợi ý tìm kiếm
@@ -28,7 +28,7 @@
 | Mobile | Flutter · Dart 3.11+ · Riverpod 2.6 · GoRouter 14 · Dio 5 |
 | Database | MySQL 8 · Spring Session JDBC · Caffeine Cache |
 | Auth | BCrypt · Session (Web) · JWT HS256 (API/Mobile) |
-| AI Chatbot | Rule-based FAQ · Ollama · LLaMA 3.2:3b (tùy chọn) |
+| AI Chatbot | Google Gemini (gemini-2.5-flash) · function calling · truy vấn DB |
 | Virtual Try-On | Python FastAPI · Replicate IDM-VTON (cloud) → CatVTON local (GPU) · SegFormer human-parsing |
 | Real-time | Server-Sent Events (SSE) |
 | Email | Gmail SMTP (async) |
@@ -154,7 +154,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 | Python | 3.10+ | Chỉ nếu dùng Try-On |
 | GPU NVIDIA (CUDA) | ≥ 4GB VRAM | Chỉ cho CatVTON local; bỏ qua nếu dùng Replicate cloud |
 | Flutter SDK | 3.11+ | Chỉ nếu build mobile app |
-| Ollama | Latest | Tùy chọn (chatbot AI) |
+| Gemini API key | — | Tùy chọn (chatbot AI); free tại Google AI Studio |
 
 ---
 
@@ -230,22 +230,23 @@ flutter run
 
 ---
 
-### 5. (Tùy chọn) Chạy AI Chatbot với Ollama
+### 5. (Tùy chọn) Bật AI Chatbot với Google Gemini
 
-> **Quan trọng:** Chatbot **hoạt động ngay mà KHÔNG cần Ollama**. Mọi máy chỉ cần clone + chạy app là chat đã trả lời được:
-> - FAQ: vận chuyển, đổi trả, size, thanh toán, coupon, chất liệu
-> - Tìm sản phẩm theo loại / màu / khoảng giá (vd: "áo hoodie dưới 500k màu đen")
-> - Danh sách sản phẩm bán chạy
->
-> Cài Ollama chỉ để bật thêm khả năng **trò chuyện tự do bằng AI**. Không có Ollama, câu hỏi tự do nhận gợi ý chung — chatbot **không bao giờ lỗi hay im lặng**.
+> Chatbot là **AI-first**: dùng Google Gemini với **function calling** để tự truy vấn
+> database sản phẩm thật (tìm theo loại/màu/giá, bán chạy, chi tiết size/tồn kho) rồi tư vấn.
+> Nếu **chưa cấu hình API key**, chatbot vẫn trả lời (fallback gợi ý sản phẩm bán chạy) —
+> **không bao giờ lỗi hay im lặng**.
 
 ```bash
-# Cài Ollama: https://ollama.com
-ollama pull llama3.2:3b
-ollama serve
+# Lấy API key free tại Google AI Studio: https://aistudio.google.com/apikey
+# Windows (PowerShell):
+$env:GEMINI_API_KEY = "AIza...your-key..."
+# Linux/macOS:
+export GEMINI_API_KEY="AIza...your-key..."
 ```
 
-Khi Ollama đang chạy tại `http://localhost:11434`, app tự động kích hoạt AI cho câu hỏi tự do.
+Đặt biến môi trường `GEMINI_API_KEY` (model mặc định `gemini-2.5-flash`) rồi chạy app —
+AI tự động kích hoạt. **Không** nên hardcode key trực tiếp vào `application.properties`.
 
 ---
 
@@ -405,18 +406,20 @@ User Upload ──► Java API ──► Python FastAPI (port 8081)
 User: "Tìm áo hoodie dưới 300k màu đen"
          │
          ▼
-  AiChatbotService
-  ├─ 1. FAQ rules    → "ship bao lâu?", "đổi trả thế nào?" → trả lời ngay
-  ├─ 2. Search rules → parse giá · category · màu → query ProductService
-  └─ 3. AI (Ollama)  → câu hỏi tự do → gửi context + history → LLaMA 3.2
+  AiChatbotService (Gemini)
+  ├─ System prompt: chính sách + danh mục (đọc từ DB)
+  ├─ Gemini quyết định gọi tool:
+  │    search_products / get_best_sellers / get_product_details
+  ├─ Tool truy vấn ProductService → dữ liệu sản phẩm THẬT
+  └─ Gemini tổng hợp lời tư vấn (kèm thẻ sản phẩm)
          │
          ▼
   Response: danh sách sản phẩm + tư vấn tự nhiên
 ```
 
-- Hỗ trợ đơn vị tiền Việt Nam: triệu / k / nghìn / ngàn / VND
+- AI-first: hầu như không còn rule cứng; AI tự gọi hàm để lấy dữ liệu DB
 - Lịch sử hội thoại: tối đa 12 lượt (session-based)
-- Luôn trả lời ngay cả khi Ollama không khả dụng
+- Luôn trả lời — fallback gợi ý bán chạy khi chưa có API key / AI lỗi
 
 ---
 
@@ -494,9 +497,9 @@ Server-Sent Events không cần WebSocket — hoạt động trên mọi browser
 | `MAIL_PASSWORD` | *(app password)* | Gmail App Password |
 | `JWT_SECRET` | *(default local key)* | JWT signing key (≥ 32 ký tự, thay cho production) |
 | `APP_PUBLIC_BASE_URL` | http://localhost:8080 | Base URL public (dùng trong link email) |
-| `CHATBOT_AI_ENABLED` | true | Bật/tắt tích hợp Ollama |
-| `OLLAMA_BASE_URL` | http://localhost:11434 | Ollama server URL |
-| `OLLAMA_MODEL` | llama3.2:3b | Model Ollama |
+| `CHATBOT_AI_ENABLED` | true | Bật/tắt AI chatbot |
+| `GEMINI_API_KEY` | *(trống)* | Google Gemini API key (free tại AI Studio) |
+| `GEMINI_MODEL` | gemini-2.5-flash | Model Gemini |
 | `TRYON_PYTHON_URL` | http://localhost:8081 | Python Try-On server |
 | `MOCK_INFERENCE` | false | Mock Try-On (không cần GPU, trả ảnh giả) |
 

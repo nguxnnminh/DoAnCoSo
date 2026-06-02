@@ -18,6 +18,14 @@ public class ProductUpdateDTO {
     private List<Long> imagesToDelete = new ArrayList<>();
     private Integer primaryImageIndex = 0;
 
+    /** Final image ordering as tokens: "E{existingId}" or "N{newImageIndex}". */
+    private List<String> imageOrder = new ArrayList<>();
+
+    // Try-On (saved together with the product)
+    private Boolean tryOnEnabled = false;
+    private MultipartFile garmentImage;
+    private String garmentType; // UPPER_BODY, LOWER_BODY
+
     public ProductUpdateDTO() {
     }
 
@@ -91,5 +99,37 @@ public class ProductUpdateDTO {
 
     public void setPrimaryImageIndex(Integer primaryImageIndex) {
         this.primaryImageIndex = primaryImageIndex;
+    }
+
+    public List<String> getImageOrder() {
+        return imageOrder;
+    }
+
+    public void setImageOrder(List<String> imageOrder) {
+        this.imageOrder = imageOrder;
+    }
+
+    public Boolean getTryOnEnabled() {
+        return tryOnEnabled;
+    }
+
+    public void setTryOnEnabled(Boolean tryOnEnabled) {
+        this.tryOnEnabled = tryOnEnabled;
+    }
+
+    public MultipartFile getGarmentImage() {
+        return garmentImage;
+    }
+
+    public void setGarmentImage(MultipartFile garmentImage) {
+        this.garmentImage = garmentImage;
+    }
+
+    public String getGarmentType() {
+        return garmentType;
+    }
+
+    public void setGarmentType(String garmentType) {
+        this.garmentType = garmentType;
     }
 }

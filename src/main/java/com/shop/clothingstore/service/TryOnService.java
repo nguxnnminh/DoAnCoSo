@@ -74,26 +74,61 @@ public class TryOnService {
     public Product preprocessAndEnable(Long productId,
             MultipartFile garmentImage,
             GarmentType garmentType) throws IOException {
+        return updateTryOnSettings(productId, true, garmentImage, garmentType);
+    }
+
+    /**
+     * Unified try-on settings update — used when saving a product (create/edit)
+     * so that the garment image and the on/off state are persisted together.
+     *
+     * <ul>
+     *   <li>{@code enabled=false} → simply disable try-on.</li>
+     *   <li>{@code enabled=true} + new garment image → preprocess (rembg, with raw
+     *       fallback if the Python bridge is offline) and enable.</li>
+     *   <li>{@code enabled=true} + no new image but a garment already exists →
+     *       keep the garment, update the type, enable.</li>
+     *   <li>{@code enabled=true} + no garment at all → {@link IllegalStateException}.</li>
+     * </ul>
+     */
+    @CacheEvict(value = "tryOnProducts", allEntries = true)
+    public Product updateTryOnSettings(Long productId,
+            boolean enabled,
+            MultipartFile garmentImage,
+            GarmentType garmentType) throws IOException {
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
-        String garmentUrl;
-        try {
-            garmentUrl = _callPreprocessGarment(garmentImage);
-            log.info("Garment preprocessed via Python bridge → {}", garmentUrl);
-        } catch (Exception e) {
-            log.warn("Python bridge preprocessing unavailable ({}), saving raw garment", e.getMessage());
-            garmentUrl = fileStorageService.upload(garmentImage, "tryon-garments");
+        boolean hasNewGarment = garmentImage != null && !garmentImage.isEmpty();
+
+        if (!enabled) {
+            product.setTryOnEnabled(false);
+            Product saved = productRepository.save(product);
+            log.info("Try-on disabled on save | product={}", productId);
+            return saved;
         }
 
-        product.setGarmentProcessedUrl(garmentUrl);
+        if (hasNewGarment) {
+            String garmentUrl;
+            try {
+                garmentUrl = _callPreprocessGarment(garmentImage);
+                log.info("Garment preprocessed via Python bridge → {}", garmentUrl);
+            } catch (Exception e) {
+                log.warn("Python bridge preprocessing unavailable ({}), saving raw garment", e.getMessage());
+                garmentUrl = fileStorageService.upload(garmentImage, "tryon-garments");
+            }
+            product.setGarmentProcessedUrl(garmentUrl);
+        } else if (product.getGarmentProcessedUrl() == null) {
+            throw new IllegalStateException(
+                    "Please upload a garment image to enable Try-On for this product.");
+        }
+
         product.setGarmentType(garmentType != null ? garmentType : GarmentType.UPPER_BODY);
         product.setTryOnEnabled(true);
 
         Product saved = productRepository.save(product);
-        log.info("Try-on enabled | product={} | garment={} | type={}",
-                productId, garmentUrl, product.getGarmentType());
+        log.info("Try-on enabled on save | product={} | garment={} | type={}",
+                productId, product.getGarmentProcessedUrl(), product.getGarmentType());
         return saved;
     }
 

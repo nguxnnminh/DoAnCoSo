@@ -22,11 +22,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.shop.clothingstore.dto.ProductCreateDTO;
 import com.shop.clothingstore.dto.ProductUpdateDTO;
 import com.shop.clothingstore.dto.VariantDTO;
+import com.shop.clothingstore.entity.GarmentType;
 import com.shop.clothingstore.entity.Product;
 import com.shop.clothingstore.entity.ProductVariant;
 import com.shop.clothingstore.service.CategoryService;
 import com.shop.clothingstore.service.ProductService;
 import com.shop.clothingstore.service.SubCategoryService;
+import com.shop.clothingstore.service.TryOnService;
 
 import jakarta.validation.Valid;
 
@@ -37,15 +39,30 @@ public class AdminProductController extends AdminBaseController {
     private final ProductService productService;
     private final SubCategoryService subCategoryService;
     private final CategoryService categoryService;
+    private final TryOnService tryOnService;
 
     public AdminProductController(
             ProductService productService,
             SubCategoryService subCategoryService,
-            CategoryService categoryService) {
+            CategoryService categoryService,
+            TryOnService tryOnService) {
 
         this.productService = productService;
         this.subCategoryService = subCategoryService;
         this.categoryService = categoryService;
+        this.tryOnService = tryOnService;
+    }
+
+    /** Parse a garment-type string from the form, defaulting to UPPER_BODY. */
+    private static GarmentType parseGarmentType(String value) {
+        if (value == null || value.isBlank()) {
+            return GarmentType.UPPER_BODY;
+        }
+        try {
+            return GarmentType.valueOf(value.trim());
+        } catch (IllegalArgumentException ex) {
+            return GarmentType.UPPER_BODY;
+        }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -158,7 +175,15 @@ public class AdminProductController extends AdminBaseController {
         }
 
         try {
-            productService.createProduct(dto);
+            Product created = productService.createProduct(dto);
+
+            // Try-On is saved together with the product (single "Create" button).
+            if (Boolean.TRUE.equals(dto.getTryOnEnabled())
+                    && dto.getGarmentImage() != null && !dto.getGarmentImage().isEmpty()) {
+                tryOnService.updateTryOnSettings(created.getId(), true,
+                        dto.getGarmentImage(), parseGarmentType(dto.getGarmentType()));
+            }
+
             redirectAttributes.addFlashAttribute(
                     "success",
                     "Product created successfully!");
@@ -281,6 +306,20 @@ public class AdminProductController extends AdminBaseController {
 
         try {
             productService.updateProduct(id, dto);
+
+            // Try-On state + garment are saved together with the product
+            // (single "Save Changes" button — no separate enable/disable form).
+            try {
+                tryOnService.updateTryOnSettings(id,
+                        Boolean.TRUE.equals(dto.getTryOnEnabled()),
+                        dto.getGarmentImage(),
+                        parseGarmentType(dto.getGarmentType()));
+            } catch (IllegalStateException tryOnEx) {
+                // e.g. enabled Try-On without ever providing a garment image
+                redirectAttributes.addFlashAttribute("error", tryOnEx.getMessage());
+                return "redirect:/admin/products/" + id + "/edit";
+            }
+
             redirectAttributes.addFlashAttribute(
                     "success",
                     "Product updated successfully!");

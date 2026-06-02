@@ -23,6 +23,10 @@ public class ProductImage extends BaseEntity implements ItemImage {
 
     private boolean primaryImage = false;
 
+    /** Display order of the image within its product (0 = first/cover). */
+    @Column(name = "sort_order")
+    private Integer sortOrder = 0;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "product_id")
     @JsonIgnore

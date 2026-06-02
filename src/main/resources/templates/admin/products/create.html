@@ -113,34 +113,47 @@
                     <label style="display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px dashed #d1d5db; border-radius:10px; padding:28px; cursor:pointer; transition:border-color 0.15s; gap:8px;"
                            id="uploadLabel" for="imageInput">
                         <svg width="28" height="28" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        <span style="font-size:13px; color:#6b7280; font-weight:500;">Select product image</span>
+                        <span style="font-size:13px; color:#6b7280; font-weight:500;">Select product images</span>
                         <span style="font-size:11px; color:#9ca3af;">PNG, JPG · max 10MB</span>
                     </label>
                     <input type="file" name="images" id="imageInput" multiple accept="image/*" style="display:none;" onchange="previewImages(this)">
+                    <input type="hidden" name="primaryImageIndex" id="primaryImageIndex" value="0">
 
-                    <div id="imagePreview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+                    <p class="form-hint" id="imageHint" style="margin-top:12px; display:none;">
+                        Drag to reorder · the first image is the cover · click ✕ to remove
+                    </p>
+                    <div id="imagePreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;"></div>
                 </div>
 
                 <!-- VIRTUAL TRY-ON -->
                 <div class="card" style="padding:24px;">
-                    <div class="section-title" style="margin-bottom:12px;">Virtual Try-On (Optional)</div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <div class="section-title" style="margin-bottom:0;">Virtual Try-On</div>
+                        <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
+                            <input type="checkbox" name="tryOnEnabled" id="tryOnToggle" style="opacity:0; width:0; height:0;">
+                            <span id="tryOnTrack" style="position:absolute;top:0;left:0;right:0;bottom:0;background:#d1d5db;border-radius:24px;transition:0.25s;">
+                                <span id="tryOnThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:0.25s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                            </span>
+                        </label>
+                    </div>
                     <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">
-                        Upload a flat-lay image (white background) to enable AI try-on.
+                        Turn on and upload a flat-lay image (white background) to enable AI try-on.
                     </p>
 
-                    <div style="margin-bottom:12px;">
-                        <label class="form-label">Garment Image (flat-lay)</label>
-                        <input type="file" name="garmentImage" accept="image/*" class="form-control" id="garmentInput" onchange="previewGarment(this)">
-                        <div id="garmentPreview" style="margin-top:8px;"></div>
-                    </div>
+                    <div id="tryOnFields" style="display:none;">
+                        <div style="margin-bottom:12px;">
+                            <label class="form-label">Garment Image (flat-lay)</label>
+                            <input type="file" name="garmentImage" accept="image/*" class="form-control" id="garmentInput" onchange="previewGarment(this)">
+                            <div id="garmentPreview" style="margin-top:8px;"></div>
+                        </div>
 
-                    <div>
-                        <label class="form-label">Garment Type</label>
-                        <select name="garmentType" class="form-control">
-                            <option value="UPPER_BODY">Shirt (Upper Body)</option>
-                            <option value="LOWER_BODY">Pants (Lower Body)</option>
-                            <option value="FULL_BODY">Dress/Full Body</option>
-                        </select>
+                        <div>
+                            <label class="form-label">Garment Type</label>
+                            <select name="garmentType" class="form-control">
+                                <option value="UPPER_BODY">Upper Body</option>
+                                <option value="LOWER_BODY">Lower Body</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -245,22 +258,77 @@
             }
         });
 
-        // ===== IMAGE PREVIEW =====
-        window.previewImages = function(input){
+        // ===== IMAGE GALLERY (drag to reorder, ✕ to remove, first = cover) =====
+        const imageInput = document.getElementById('imageInput');
+        let selectedFiles = [];   // ordered list of File objects
+        let dragIndex = null;
+
+        function syncImageInput(){
+            const dt = new DataTransfer();
+            selectedFiles.forEach(f => dt.items.add(f));
+            imageInput.files = dt.files;
+            document.getElementById('primaryImageIndex').value = '0';
+        }
+
+        function renderImageGallery(){
             const preview = document.getElementById('imagePreview');
             preview.innerHTML = '';
-            Array.from(input.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(e){
-                    const div = document.createElement('div');
-                    div.style.cssText = 'position:relative; width:80px; height:80px;';
-                    div.innerHTML = `<img src="${e.target.result}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">`;
-                    preview.appendChild(div);
-                };
-                reader.readAsDataURL(file);
+            document.getElementById('imageHint').style.display = selectedFiles.length ? 'block' : 'none';
+            document.getElementById('uploadLabel').style.borderColor = selectedFiles.length ? '#2563eb' : '#d1d5db';
+
+            selectedFiles.forEach((file, idx) => {
+                const div = document.createElement('div');
+                div.draggable = true;
+                div.dataset.idx = idx;
+                div.style.cssText = 'position:relative; width:88px; height:88px; border-radius:8px; cursor:grab;';
+                const url = URL.createObjectURL(file);
+                div.innerHTML = `
+                    <img src="${url}" style="width:88px;height:88px;object-fit:cover;border-radius:8px;border:2px solid ${idx===0?'#2563eb':'#e5e7eb'};">
+                    ${idx===0 ? '<span style="position:absolute;bottom:4px;left:4px;background:#2563eb;color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:6px;">COVER</span>' : ''}
+                    <button type="button" data-remove="${idx}" title="Remove"
+                            style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border:none;border-radius:50%;background:#ef4444;color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>`;
+
+                div.addEventListener('dragstart', () => { dragIndex = idx; div.style.opacity = '0.4'; });
+                div.addEventListener('dragend',   () => { div.style.opacity = '1'; });
+                div.addEventListener('dragover',  e => e.preventDefault());
+                div.addEventListener('drop', e => {
+                    e.preventDefault();
+                    if (dragIndex === null || dragIndex === idx) return;
+                    const [moved] = selectedFiles.splice(dragIndex, 1);
+                    selectedFiles.splice(idx, 0, moved);
+                    dragIndex = null;
+                    syncImageInput();
+                    renderImageGallery();
+                });
+                preview.appendChild(div);
             });
-            document.getElementById('uploadLabel').style.borderColor = '#2563eb';
+        }
+
+        document.getElementById('imagePreview').addEventListener('click', function(e){
+            const btn = e.target.closest('[data-remove]');
+            if (!btn) return;
+            selectedFiles.splice(Number(btn.dataset.remove), 1);
+            syncImageInput();
+            renderImageGallery();
+        });
+
+        window.previewImages = function(input){
+            Array.from(input.files).forEach(f => selectedFiles.push(f));
+            syncImageInput();          // rebuild input from the ordered array
+            renderImageGallery();
         };
+
+        // ===== TRY-ON TOGGLE (off → hide fields, on → show) =====
+        (function(){
+            const toggle = document.getElementById('tryOnToggle');
+            function syncTryOn(){
+                document.getElementById('tryOnTrack').style.background = toggle.checked ? '#2563eb' : '#d1d5db';
+                document.getElementById('tryOnThumb').style.left = toggle.checked ? '23px' : '3px';
+                document.getElementById('tryOnFields').style.display = toggle.checked ? 'block' : 'none';
+            }
+            toggle.addEventListener('change', syncTryOn);
+            syncTryOn();
+        })();
 
         // ===== GARMENT PREVIEW =====
         window.previewGarment = function(input){

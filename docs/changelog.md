@@ -171,6 +171,26 @@ Không có hệ thống referral. User không có lý do để giới thiệu b�
 
 ## DONE — Đã thay đổi
 
+### [2026-06-02] Chatbot AI-first: chuyển Ollama → Google Gemini + function calling
+
+**BEFORE:**
+- Chatbot nặng rule-based: regex giá, từ điển từ khóa danh mục/màu, FAQ cứng (`AiChatbotService`).
+- Tầng AI chạy qua **Ollama local** (`OllamaChatClient`, model llama3.2:3b) — phải cài Ollama trên máy mới dùng được AI.
+
+**AFTER:**
+- Bỏ Ollama hoàn toàn (xóa `OllamaChatClient`, gỡ Ollama khỏi máy + cấu hình).
+- Chuyển sang **Google Gemini** (`gemini-2.5-flash`) qua `GeminiChatClient` với **function calling**.
+- AI tự gọi tool truy vấn DB thật: `search_products`, `get_best_sellers`, `get_product_details` → tổng hợp tư vấn kèm thẻ sản phẩm.
+- System prompt nhồi chính sách + danh mục (đọc động từ DB). Gần như bỏ hết rule cứng; chỉ giữ fallback gợi ý bán chạy khi chưa có API key / AI lỗi (429/401...).
+
+**Files thay đổi:**
+- `service/AiChatbotService.java` (viết lại), `service/ai/GeminiChatClient.java` (mới), `service/ai/OllamaChatClient.java` (xóa)
+- `config/ChatbotAiProperties.java`, `resources/application.properties`
+- `controller/api/ChatbotApiController.java`, `README.md`, `docs/features.md`
+
+**Lý do:**
+Giảm rule-base, để AI lo phần lớn; dùng API free (Gemini) không phải cài LLM local cho nhẹ máy; tư vấn bám sát dữ liệu sản phẩm thật qua function calling.
+
 ### [2026-05-29] Thêm 5 tính năng lớn: hero slider, full-text search, review ảnh, SSE notification, referral
 
 **BEFORE:**

@@ -94,23 +94,36 @@
                     <p class="form-hint" style="margin-top:12px;">Enter numeric price, e.g. 250000</p>
                 </div>
 
-                <!-- EXISTING IMAGES -->
-                <div class="card" style="padding:24px;" th:if="${existingImages != null and !existingImages.isEmpty()}">
-                    <div class="section-title">Existing Images</div>
-                    <p class="form-hint" style="margin-bottom:16px;">Check image to mark for deletion. Marked images will be removed on save.</p>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px;">
-                        <label th:each="img : ${existingImages}"
-                               style="position:relative; cursor:pointer; display:block;">
-                            <input type="checkbox" name="imagesToDelete" th:value="${img.id}"
-                                   style="position:absolute; top:8px; left:8px; z-index:2; width:16px; height:16px; cursor:pointer;"
-                                   class="img-del-cb">
-                            <img th:src="${img.imageUrl}"
-                                 style="width:100%; height:110px; object-fit:cover; border-radius:8px; border:2px solid #e5e7eb; transition:all 0.15s; display:block;"
-                                 class="img-thumb">
-                            <div style="position:absolute; inset:0; border-radius:8px; background:rgba(239,68,68,0.08); opacity:0; transition:opacity 0.15s; pointer-events:none;"
-                                 class="img-overlay"></div>
-                        </label>
+                <!-- PRODUCT IMAGES (existing + new, drag to reorder) -->
+                <div class="card" style="padding:24px;">
+                    <div class="section-title">Product Images</div>
+
+                    <label style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+                                  border:2px dashed #d1d5db; border-radius:10px; padding:24px 16px;
+                                  cursor:pointer; transition:border-color 0.15s; gap:8px;"
+                           id="uploadLabel" for="newImageInput"
+                           onmouseover="this.style.borderColor='#2563eb'"
+                           onmouseout="this.style.borderColor='#d1d5db'">
+                        <svg width="26" height="26" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span style="font-size:13px; color:#6b7280; font-weight:500;">Add images</span>
+                        <span style="font-size:11px; color:#9ca3af;">PNG, JPG · max 10MB</span>
+                    </label>
+                    <input type="file" name="newImages" id="newImageInput" multiple accept="image/*"
+                           style="display:none;" onchange="addNewImages(this)">
+
+                    <p class="form-hint" id="imageHint" style="margin-top:12px;">
+                        Drag to reorder · the first image is the cover · click ✕ to remove
+                    </p>
+                    <div id="imageGallery" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-top:8px;"></div>
+
+                    <!-- Existing images data (read by JS to seed the gallery) -->
+                    <div id="existingImagesData" style="display:none;">
+                        <span th:each="img : ${existingImages}" th:data-id="${img.id}" th:data-url="${img.imageUrl}"></span>
                     </div>
+
+                    <!-- Hidden fields rebuilt on submit -->
+                    <div id="imageOrderInputs" style="display:none;"></div>
+                    <div id="imagesToDeleteInputs" style="display:none;"></div>
                 </div>
 
             </div>
@@ -141,23 +154,46 @@
                     </div>
                 </div>
 
-                <!-- NEW IMAGES -->
+                <!-- VIRTUAL TRY-ON (saved together — single Save button) -->
                 <div class="card" style="padding:24px;">
-                    <div class="section-title">Add New Images</div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <div class="section-title" style="margin-bottom:0;">Virtual Try-On</div>
+                        <label style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
+                            <input type="checkbox" name="tryOnEnabled" id="tryOnToggle"
+                                   th:checked="${product.tryOnEnabled}" style="opacity:0; width:0; height:0;">
+                            <span id="tryOnTrack"
+                                  style="position:absolute;top:0;left:0;right:0;bottom:0;border-radius:24px;transition:0.25s;background:#d1d5db;">
+                                <span id="tryOnThumb"
+                                      style="position:absolute;height:18px;width:18px;bottom:3px;left:3px;background:white;border-radius:50%;transition:0.25s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                            </span>
+                        </label>
+                    </div>
+                    <p style="font-size:11px; color:#9ca3af; margin-bottom:12px;">
+                        Turn on and upload a flat-lay garment image (white background) to enable AI try-on.
+                    </p>
 
-                    <label style="display:flex; flex-direction:column; align-items:center; justify-content:center;
-                                  border:2px dashed #d1d5db; border-radius:10px; padding:24px 16px;
-                                  cursor:pointer; transition:border-color 0.15s; gap:8px;"
-                           id="uploadLabel" for="newImageInput"
-                           onmouseover="this.style.borderColor='#2563eb'"
-                           onmouseout="this.style.borderColor='#d1d5db'">
-                        <svg width="26" height="26" fill="none" stroke="#9ca3af" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        <span style="font-size:13px; color:#6b7280; font-weight:500;">Select Image</span>
-                        <span style="font-size:11px; color:#9ca3af;">PNG, JPG · max 10MB</span>
-                    </label>
-                    <input type="file" name="newImages" id="newImageInput" multiple accept="image/*"
-                           style="display:none;" onchange="previewNewImages(this)">
-                    <div id="newImagePreview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+                    <div id="tryOnFields" style="display:none;">
+                        <!-- Current garment -->
+                        <div th:if="${product.garmentProcessedUrl != null}" style="margin-bottom:12px;">
+                            <label class="form-label">Current Garment</label>
+                            <img th:src="${product.garmentProcessedUrl}"
+                                 style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;display:block;">
+                        </div>
+
+                        <div style="margin-bottom:12px;">
+                            <label class="form-label" th:text="${product.garmentProcessedUrl != null} ? 'Replace Garment Image (optional)' : 'Garment Image (flat-lay)'">Garment Image</label>
+                            <input type="file" name="garmentImage" accept="image/*" class="form-control" id="garmentInput" onchange="previewGarment(this)">
+                            <div id="garmentPreview" style="margin-top:8px;"></div>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Garment Type</label>
+                            <select name="garmentType" class="form-control">
+                                <option value="UPPER_BODY" th:selected="${product.garmentType?.name() == 'UPPER_BODY'}">Upper Body</option>
+                                <option value="LOWER_BODY" th:selected="${product.garmentType?.name() == 'LOWER_BODY'}">Lower Body</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- VISIBILITY -->
@@ -196,78 +232,6 @@
             </div>
         </div>
     </form>
-
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TRY-ON CARD — MUST be OUTSIDE the product edit form above    -->
-    <!-- to avoid the nested-form HTML bug.                           -->
-    <!-- ══════════════════════════════════════════════════════════════ -->
-    <div style="margin-top:24px;">
-        <div class="card" style="padding:24px;">
-            <div class="section-title" style="margin-bottom:16px;">
-                Virtual Try-On
-            </div>
-
-            <!-- Current status -->
-            <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; font-size:13px;">
-                <span th:if="${product.tryOnEnabled}"
-                      style="background:#dcfce7; color:#166534; padding:4px 12px; border-radius:20px; font-weight:600;">
-                    Try-On: ON
-                </span>
-                <span th:unless="${product.tryOnEnabled}"
-                      style="background:#f3f4f6; color:#6b7280; padding:4px 12px; border-radius:20px; font-weight:600;">
-                    Try-On: OFF
-                </span>
-                <span th:if="${product.garmentProcessedUrl != null}"
-                      style="color:#6b7280;">
-                    Garment: <a th:href="${product.garmentProcessedUrl}" target="_blank" style="color:#3b82f6;">view image</a>
-                </span>
-                <span th:if="${product.garmentType != null}"
-                      style="color:#6b7280;" th:text="'Type: ' + ${product.garmentType}">
-                </span>
-            </div>
-
-            <!-- Enable form -->
-            <form th:action="@{/admin/products/{id}/tryon/enable(id=${productId})}"
-                  method="post" enctype="multipart/form-data"
-                  style="display:flex; flex-direction:column; gap:12px;">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-
-                <div style="display:grid; grid-template-columns:1fr auto; gap:12px; align-items:end;">
-                    <div>
-                        <label class="form-label">Garment Image (flat-lay, white bg)</label>
-                        <input type="file" name="garmentImage" accept="image/*" class="form-control" required>
-                    </div>
-                    <div>
-                        <label class="form-label">Type</label>
-                        <select name="garmentType" class="form-control">
-                            <option value="UPPER_BODY" th:selected="${product.garmentType?.name() == 'UPPER_BODY'}">Shirt (Upper Body)</option>
-                            <option value="LOWER_BODY" th:selected="${product.garmentType?.name() == 'LOWER_BODY'}">Pants (Lower Body)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display:flex; gap:8px;">
-                    <button type="submit" class="btn btn-primary" style="font-size:13px;">
-                        Save Garment &amp; Enable Try-On
-                    </button>
-                </div>
-            </form>
-
-            <!-- Disable form (only show if currently enabled) -->
-            <form th:if="${product.tryOnEnabled}"
-                  th:action="@{/admin/products/{id}/tryon/disable(id=${productId})}"
-                  method="post" style="margin-top:8px;">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-                <button type="submit" class="btn btn-sm btn-secondary" style="font-size:12px; color:#ef4444;">
-                    Disable Try-On
-                </button>
-            </form>
-
-            <p style="font-size:11px; color:#9ca3af; margin:12px 0 0;">
-                Upload flat-lay product image (white background). AI will place this on customer photos.
-            </p>
-        </div>
-    </div>
 
     <script th:inline="javascript">
         (function(){
@@ -388,39 +352,128 @@
             thumb.style.left = this.checked ? '23px' : '3px';
         });
 
-        /* ── IMAGE DELETE PREVIEW ────────────────────────── */
-        document.querySelectorAll('.img-del-cb').forEach(cb => {
-            cb.addEventListener('change', function() {
-                const label   = this.closest('label');
-                const thumb   = label.querySelector('.img-thumb');
-                const overlay = label.querySelector('.img-overlay');
-                if (this.checked) {
-                    thumb.style.borderColor  = '#ef4444';
-                    thumb.style.opacity      = '0.5';
-                    overlay.style.opacity    = '1';
+        /* ── TRY-ON TOGGLE (off → hide fields, on → show) ── */
+        (function() {
+            const toggle = document.getElementById('tryOnToggle');
+            const track  = document.getElementById('tryOnTrack');
+            const thumb  = document.getElementById('tryOnThumb');
+            const fields = document.getElementById('tryOnFields');
+            function syncTryOn() {
+                track.style.background = toggle.checked ? '#2563eb' : '#d1d5db';
+                thumb.style.left       = toggle.checked ? '23px' : '3px';
+                fields.style.display   = toggle.checked ? 'block' : 'none';
+            }
+            toggle.addEventListener('change', syncTryOn);
+            syncTryOn();   // initial state from the product's saved value
+        })();
+
+        window.previewGarment = function(input) {
+            const preview = document.getElementById('garmentPreview');
+            preview.innerHTML = '';
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.innerHTML = `<img src="${e.target.result}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;">`;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        };
+
+        /* ── IMAGE GALLERY (existing + new, drag to reorder, ✕ to remove) ── */
+        // Seed from the server-rendered data attributes (avoids JSON serialization of entities).
+        const existingImages = Array.from(document.querySelectorAll('#existingImagesData span'))
+            .map(s => ({ id: Number(s.dataset.id), imageUrl: s.dataset.url }));
+        // Each item: {type:'existing', id, url} or {type:'new', file, url}
+        let galleryItems = existingImages.map(img => ({
+            type: 'existing', id: img.id, url: img.imageUrl
+        }));
+        const newImageInput = document.getElementById('newImageInput');
+        let dragIndex = null;
+
+        function renderGallery() {
+            const gallery = document.getElementById('imageGallery');
+            gallery.innerHTML = '';
+            document.getElementById('imageHint').style.display = galleryItems.length ? 'block' : 'none';
+
+            galleryItems.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.draggable = true;
+                div.dataset.idx = idx;
+                div.style.cssText = 'position:relative; height:110px; border-radius:8px; cursor:grab;';
+                div.innerHTML = `
+                    <img src="${item.url}" style="width:100%;height:110px;object-fit:cover;border-radius:8px;border:2px solid ${idx===0?'#2563eb':'#e5e7eb'};display:block;">
+                    ${idx===0 ? '<span style="position:absolute;bottom:5px;left:5px;background:#2563eb;color:#fff;font-size:9px;font-weight:600;padding:1px 6px;border-radius:6px;">COVER</span>' : ''}
+                    <button type="button" data-remove="${idx}" title="Remove"
+                            style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border:none;border-radius:50%;background:#ef4444;color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>`;
+
+                div.addEventListener('dragstart', () => { dragIndex = idx; div.style.opacity = '0.4'; });
+                div.addEventListener('dragend',   () => { div.style.opacity = '1'; });
+                div.addEventListener('dragover',  e => e.preventDefault());
+                div.addEventListener('drop', e => {
+                    e.preventDefault();
+                    if (dragIndex === null || dragIndex === idx) return;
+                    const [moved] = galleryItems.splice(dragIndex, 1);
+                    galleryItems.splice(idx, 0, moved);
+                    dragIndex = null;
+                    renderGallery();
+                });
+                gallery.appendChild(div);
+            });
+        }
+
+        document.getElementById('imageGallery').addEventListener('click', function(e) {
+            const btn = e.target.closest('[data-remove]');
+            if (!btn) return;
+            galleryItems.splice(Number(btn.dataset.remove), 1);
+            renderGallery();
+        });
+
+        window.addNewImages = function(input) {
+            Array.from(input.files).forEach(file => {
+                galleryItems.push({ type: 'new', file, url: URL.createObjectURL(file) });
+            });
+            renderGallery();
+        };
+
+        renderGallery();
+
+        /* ── BUILD IMAGE FIELDS ON SUBMIT ────────────────── */
+        document.getElementById('productEditForm').addEventListener('submit', function() {
+            const orderBox  = document.getElementById('imageOrderInputs');
+            const deleteBox = document.getElementById('imagesToDeleteInputs');
+            orderBox.innerHTML = '';
+            deleteBox.innerHTML = '';
+
+            // New files in their final gallery order → rebuild the file input + N-tokens
+            const dt = new DataTransfer();
+            let newIdx = 0;
+            galleryItems.forEach(item => {
+                const tok = document.createElement('input');
+                tok.type = 'hidden';
+                tok.name = 'imageOrder';
+                if (item.type === 'existing') {
+                    tok.value = 'E' + item.id;
                 } else {
-                    thumb.style.borderColor  = '#e5e7eb';
-                    thumb.style.opacity      = '1';
-                    overlay.style.opacity    = '0';
+                    tok.value = 'N' + newIdx;
+                    dt.items.add(item.file);
+                    newIdx++;
+                }
+                orderBox.appendChild(tok);
+            });
+            newImageInput.files = dt.files;
+
+            // Existing images removed from the gallery → imagesToDelete
+            const keptIds = new Set(galleryItems.filter(i => i.type === 'existing').map(i => String(i.id)));
+            (existingImages || []).forEach(img => {
+                if (!keptIds.has(String(img.id))) {
+                    const del = document.createElement('input');
+                    del.type = 'hidden';
+                    del.name = 'imagesToDelete';
+                    del.value = img.id;
+                    deleteBox.appendChild(del);
                 }
             });
         });
-
-        /* ── NEW IMAGE PREVIEW ───────────────────────────── */
-        window.previewNewImages = function(input) {
-            const preview = document.getElementById('newImagePreview');
-            preview.innerHTML = '';
-            Array.from(input.files).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.cssText = 'width:72px; height:72px; object-fit:cover; border-radius:8px; border:2px solid #e5e7eb;';
-                    preview.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            });
-        };
         })();
     </script>
 

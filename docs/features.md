@@ -15,7 +15,7 @@
 | Cache | Caffeine (in-memory) |
 | Email | Gmail SMTP (async) |
 | Auth | BCrypt + Session JDBC (web) · JWT HS256 (API / mobile) |
-| AI Chatbot | Rule-based FAQ + Ollama + llama3.2:3b (tùy chọn) |
+| AI Chatbot | Google Gemini (gemini-2.5-flash) + function calling + truy vấn DB |
 | Virtual Try-On | Python FastAPI bridge → Replicate IDM-VTON (cloud) → CatVTON local (GPU) · SegFormer mask |
 | Real-time | Server-Sent Events (SSE) |
 | File upload | Local disk `uploads/` · max 20 MB |
@@ -119,12 +119,13 @@
 
 ### 1.14 AI Chatbot
 - Hộp chat nổi trên toàn site (web)
-- **Tầng 1 — Rule-based FAQ**: vận chuyển, đổi trả, size, thanh toán, coupon, chất liệu → trả lời ngay, luôn hoạt động
-- **Tầng 2 — Rule-based Search**: parse giá (regex VN: triệu/k/nghìn/ngàn), category, màu → query ProductService
-- **Tầng 3 — AI (Ollama LLaMA 3.2)**: câu hỏi tự do, gửi context + lịch sử → LLaMA 3.2:3b (tùy chọn)
+- **AI-first (Google Gemini)**: dùng model `gemini-2.5-flash` với **function calling**
+- System prompt nhồi chính sách cửa hàng + danh mục (đọc động từ DB)
+- AI tự quyết định gọi tool truy vấn DB thật: `search_products` (loại/màu/giá), `get_best_sellers`, `get_product_details` (size/màu/tồn kho) → tổng hợp tư vấn kèm thẻ sản phẩm
+- Gần như không còn rule cứng (chỉ giữ fallback khi AI lỗi/offline)
 - Lịch sử hội thoại: tối đa 12 lượt (session-based)
-- Cooldown 5 phút · timeout 10 giây khi Ollama lỗi
-- Luôn trả lời — không bao giờ lỗi dù Ollama không chạy
+- Cooldown 5 phút · timeout 15 giây khi API lỗi
+- Luôn trả lời — fallback gợi ý sản phẩm bán chạy khi chưa có API key / AI lỗi
 
 ### 1.15 Các trang tĩnh
 - `/contact` — Liên hệ

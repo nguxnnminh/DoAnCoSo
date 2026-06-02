@@ -137,12 +137,29 @@
 
     /* ── TRY-ON MODAL UPLOAD ZONE ───────────────────────────── */
     .upload-zone {
-      border:1px solid #272727; padding:16px;
-      text-align:center; min-height:220px;
+      border:1px dashed #333; border-radius:4px; padding:20px;
+      text-align:center; min-height:380px;
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       background:#0a0a0a; cursor:pointer;
-      transition:border-color .2s;
+      transition:border-color .2s, background .2s;
     }
+    .upload-zone:hover { border-color:#666; background:#0d0d0d; }
+    .upload-zone.has-image { border-style:solid; padding:12px; }
+    #tryonResultImg, #tryonPersonPreview { cursor:zoom-in; }
+
+    /* ── TRY-ON LIGHTBOX ─────────────────────────────────────── */
+    .tryon-lightbox {
+      display:none; position:fixed; inset:0; z-index:10001;
+      background:rgba(0,0,0,0.95); backdrop-filter:blur(8px);
+      align-items:center; justify-content:center; padding:32px; cursor:zoom-out;
+    }
+    .tryon-lightbox.open { display:flex; }
+    .tryon-lightbox img { max-width:92vw; max-height:90vh; object-fit:contain; box-shadow:0 0 60px rgba(0,0,0,.6); }
+    .tryon-lightbox-close {
+      position:fixed; top:22px; right:26px; background:none; border:none;
+      color:#ccc; cursor:pointer; width:44px; height:44px;
+    }
+    .tryon-lightbox-close:hover { color:#fff; }
   </style>
 
   <!-- ── PRODUCT LAYOUT ────────────────────────────────────── -->
@@ -644,6 +661,23 @@
       status.style.color = isError ? '#bf6d6d' : '#888';
     }
 
+    // Switch the upload zone into the "image loaded" state
+    function showTryonPhoto() {
+      document.getElementById('tryonUploadPrompt').style.display = 'none';
+      document.getElementById('tryonChangePhoto').style.display = 'block';
+      document.getElementById('tryonUploadZone').classList.add('has-image');
+    }
+
+    // ── Lightbox (enlarge preview / result) ───────────────
+    function openTryonLightbox(src) {
+      if (!src) return;
+      document.getElementById('tryonLightboxImg').src = src;
+      document.getElementById('tryonLightbox').classList.add('open');
+    }
+    function closeTryonLightbox() {
+      document.getElementById('tryonLightbox').classList.remove('open');
+    }
+
     function openTryOnModal() {
       tryOnLastFocus = document.activeElement;
       document.getElementById('tryOnModal').style.display = 'flex';
@@ -652,7 +686,7 @@
       if (savedPersonId && savedPersonUrl) {
         document.getElementById('tryonPersonPreview').src = savedPersonUrl;
         document.getElementById('tryonPersonPreview').style.display = 'block';
-        document.getElementById('tryonUploadLabel').textContent = 'Change photo';
+        showTryonPhoto();
       }
       // Reset result area
       document.getElementById('tryonResultArea').style.display = 'none';
@@ -678,6 +712,7 @@
       reader.onload = e => {
         document.getElementById('tryonPersonPreview').src = e.target.result;
         document.getElementById('tryonPersonPreview').style.display = 'block';
+        showTryonPhoto();
       };
       reader.readAsDataURL(file);
 
@@ -689,7 +724,7 @@
       const headers = {};
       if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
 
-      document.getElementById('tryonUploadLabel').textContent = 'Uploading...';
+      setTryOnStatus('Uploading photo…');
 
       fetch('/api/tryon/upload-person', { method: 'POST', body: formData, headers })
         .then(r => r.json())
@@ -699,16 +734,13 @@
             savedPersonUrl = data.url;
             localStorage.setItem('tryon_personId', savedPersonId);
             localStorage.setItem('tryon_personUrl', savedPersonUrl);
-            document.getElementById('tryonUploadLabel').textContent = '✓ Saved — Change photo';
-            setTryOnStatus('Photo saved. Generate a preview when you are ready.');
+            setTryOnStatus('✓ Photo saved. Generate a preview when you are ready.');
             window.novaTrack?.('tryon_photo_uploaded', { productId });
           } else {
-            document.getElementById('tryonUploadLabel').textContent = 'Error: ' + (data.error || 'Unknown');
             setTryOnStatus('Upload failed: ' + (data.error || 'Unknown'), true);
           }
         })
         .catch(err => {
-          document.getElementById('tryonUploadLabel').textContent = 'Upload error: ' + err.message;
           setTryOnStatus('Upload error: ' + err.message, true);
         });
     }
@@ -791,7 +823,7 @@
               align-items:center; justify-content:center; padding:20px;">
 
     <div style="background:#0f0f0f; border:1px solid #272727;
-                max-width:780px; width:100%; max-height:90vh; overflow-y:auto;
+                max-width:1040px; width:100%; max-height:92vh; overflow-y:auto;
                 padding:36px; position:relative;">
 
       <!-- Close -->
@@ -817,28 +849,37 @@
         <div>
           <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Your Photo</p>
           <div class="upload-zone" id="tryonUploadZone"
-               onmouseover="this.style.borderColor='#444'" onmouseout="this.style.borderColor='#272727'">
-            <img id="tryonPersonPreview" style="display:none; max-height:280px; width:auto;
-                 margin-bottom:12px; object-fit:contain;" />
-            <label for="tryonPersonInput" id="tryonUploadLabel"
-                   class="text-[0.65rem] tracking-widest uppercase text-zinc-500 cursor-pointer"
-                   style="border-bottom:1px solid #333; padding-bottom:2px; transition:color .2s;"
-                   onmouseover="this.style.color='#ccc'" onmouseout="this.style.color=''">
-              Upload full-body photo
-            </label>
+               onclick="document.getElementById('tryonPersonInput').click()">
+            <img id="tryonPersonPreview" style="display:none; max-height:480px; width:100%;
+                 object-fit:contain; border-radius:3px;"
+                 onclick="event.stopPropagation(); openTryonLightbox(this.src)" />
+            <div id="tryonUploadPrompt" style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.3" aria-hidden="true">
+                <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+              <span id="tryonUploadLabel"
+                     class="text-[0.7rem] tracking-widest uppercase text-zinc-400 cursor-pointer"
+                     style="border-bottom:1px solid #444; padding-bottom:3px; transition:color .2s;"
+                     onmouseover="this.style.color='#fff'" onmouseout="this.style.color=''">
+                Upload full-body photo
+              </span>
+              <p class="text-[0.55rem] tracking-widest uppercase text-zinc-700">
+                Standing pose · simple background
+              </p>
+            </div>
+            <p id="tryonChangePhoto" style="display:none;" class="text-[0.6rem] tracking-widest uppercase text-zinc-600 mt-3 cursor-pointer">
+              Change photo
+            </p>
             <input type="file" id="tryonPersonInput" accept="image/*"
                    style="display:none;" onchange="handlePersonUpload(this)">
-            <p class="text-[0.55rem] tracking-widest uppercase text-zinc-800 mt-2">
-              Standing pose, simple background
-            </p>
           </div>
         </div>
 
         <!-- RIGHT: Result -->
         <div>
           <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Result</p>
-          <div style="border:1px solid #272727; padding:16px;
-                      min-height:220px; display:flex; flex-direction:column;
+          <div style="border:1px solid #272727; border-radius:4px; padding:16px;
+                      min-height:380px; display:flex; flex-direction:column;
                       align-items:center; justify-content:center; background:#0a0a0a;">
 
             <!-- Loading animation -->
@@ -866,8 +907,9 @@
 
             <!-- Result image -->
             <div id="tryonResultArea" style="display:none; text-align:center; width:100%;">
-              <img id="tryonResultImg" style="max-height:350px; width:auto; object-fit:contain;" />
-              <p class="text-[0.55rem] tracking-widest uppercase text-zinc-800 mt-2">AI Generated Preview</p>
+              <img id="tryonResultImg" style="max-height:520px; width:100%; object-fit:contain; border-radius:3px;"
+                   onclick="openTryonLightbox(this.src)" />
+              <p class="text-[0.55rem] tracking-widest uppercase text-zinc-700 mt-2">AI Generated Preview · tap to enlarge</p>
               <a id="tryonDownloadBtn" href="#"
                  class="inline-block mt-2 mb-1 min-h-[36px] px-5 bg-[#0a0a0a] text-[#f5f5f3] border-none
                         font-body text-[0.62rem] tracking-widest uppercase cursor-pointer leading-[36px]
@@ -900,6 +942,14 @@
         Generate Try-On
       </button>
     </div>
+  </div>
+
+  <!-- Try-on lightbox -->
+  <div id="tryonLightbox" class="tryon-lightbox" onclick="closeTryonLightbox()">
+    <button type="button" class="tryon-lightbox-close" aria-label="Close" onclick="closeTryonLightbox()">
+      <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <img id="tryonLightboxImg" alt="Enlarged preview" />
   </div>
 
   <style>

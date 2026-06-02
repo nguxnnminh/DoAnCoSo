@@ -39,10 +39,9 @@ public class ChatbotApiController {
         String message = request.getOrDefault("message", "");
 
         // NOTE: we deliberately do NOT gate on isEnabledAndConfigured() here.
-        // processMessage() already serves rule-based FAQ + product search WITHOUT
-        // Ollama, and only the free-form AI tier degrades gracefully when AI is
-        // off. This guarantees the chat always answers on any machine that just
-        // clones + runs the app, even without Ollama installed.
+        // processMessage() degrades gracefully (best-seller fallback) when the
+        // Gemini API key is missing or the API is failing, so the chat endpoint
+        // always answers — even on a fresh clone without an API key configured.
         List<Map<String, Object>> history = getHistory(session);
 
         ChatbotResponse response = chatbotService.processMessage(message, history);

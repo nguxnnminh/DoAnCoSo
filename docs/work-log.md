@@ -16,7 +16,7 @@
 | File template (HTML) đã sửa | 1 |
 | File cấu hình đã sửa | 2 (`.gitignore`, `application.properties`) |
 | File tài liệu đã tạo | 4 (`README.md`, `docs/features.md`, `docs/changelog.md`, `docs/work-log.md`) |
-| Phần mềm đã cài cho môi trường chạy | JDK 17, MariaDB 11.4, Ollama + llama3.2:3b |
+| Phần mềm đã cài cho môi trường chạy | JDK 17, MariaDB 11.4, Google Gemini API (chatbot, không cài đặt local) |
 
 ---
 
@@ -71,7 +71,7 @@
 |---|-------------|-----------|----------|
 | 24 | Cài JDK 17 (Temurin) portable | `C:\devtools\jdk\jdk-17.0.13+11` | Để biên dịch & chạy Spring Boot (máy chưa có Java) |
 | 25 | Cài MariaDB 11.4 portable (thay MySQL) | `C:\devtools\mariadb\mariadb-11.4.4-winx64`, data tại `C:\devtools\mariadb-data` | Database cho app (tương thích 100% với mysql-connector-j). Đã tạo DB `clothingstore` |
-| 26 | Cài Ollama + model llama3.2:3b | Ollama tại `%LOCALAPPDATA%\Programs\Ollama`, chạy cổng 11434 | Để AI Chatbot hoạt động (LLM chạy local, miễn phí) |
+| 26 | Dùng Google Gemini cho AI Chatbot (đã gỡ Ollama) | API cloud — đặt `GEMINI_API_KEY` (model `gemini-2.5-flash`), không cài đặt local | AI Chatbot dùng API free + function calling, không cần chạy LLM local cho nhẹ máy |
 | 27 | Sửa cấu hình git: xóa credential `Viet1117`, đăng nhập lại `halam03` | Windows Credential Manager | Để push code lên đúng tài khoản có quyền |
 
 ---

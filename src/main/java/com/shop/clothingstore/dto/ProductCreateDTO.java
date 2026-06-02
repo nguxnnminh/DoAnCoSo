@@ -31,7 +31,8 @@ public class ProductCreateDTO {
     private Integer primaryImageIndex = 0; // index của ảnh chính
 
     // Try-On (optional — set during creation)
+    private Boolean tryOnEnabled = false;
     private MultipartFile garmentImage;
-    private String garmentType; // UPPER_BODY, LOWER_BODY, FULL_BODY
+    private String garmentType; // UPPER_BODY, LOWER_BODY
 }
 

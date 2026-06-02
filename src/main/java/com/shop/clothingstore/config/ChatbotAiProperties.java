@@ -8,29 +8,34 @@ import org.springframework.stereotype.Component;
 public class ChatbotAiProperties {
 
     /**
-     * Master switch for AI chatbot.
-     * If disabled, the app will always use the rule-based chatbot.
+     * Master switch for the AI chatbot.
+     * If disabled (or no API key), the app falls back to a lightweight response.
      */
     private boolean enabled = false;
 
     /**
-     * Ollama base URL, e.g. http://localhost:11434
+     * Google Gemini API key (free tier — get one at https://aistudio.google.com/apikey).
      */
-    private String ollamaBaseUrl = "http://localhost:11434";
+    private String geminiApiKey = "";
 
     /**
-     * Ollama model name, e.g. llama3.1
+     * Gemini model name, e.g. gemini-2.5-flash.
      */
-    private String ollamaModel = "llama3.1";
+    private String geminiModel = "gemini-2.5-flash";
+
+    /**
+     * Gemini REST base URL (Generative Language API, v1beta supports function calling).
+     */
+    private String geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
     /**
      * Request timeout in milliseconds.
      */
-    private int timeoutMs = 10_000;
+    private int timeoutMs = 15_000;
 
     /**
-     * If OpenAI returns a rate limit / quota error, temporarily disable AI calls
-     * to avoid spamming the API and logs.
+     * If the API returns a rate-limit / quota / auth error, temporarily disable AI
+     * calls to avoid spamming the API and logs.
      */
     private int cooldownSeconds = 300;
 
@@ -42,20 +47,28 @@ public class ChatbotAiProperties {
         this.enabled = enabled;
     }
 
-    public String getOllamaBaseUrl() {
-        return ollamaBaseUrl;
+    public String getGeminiApiKey() {
+        return geminiApiKey;
     }
 
-    public void setOllamaBaseUrl(String ollamaBaseUrl) {
-        this.ollamaBaseUrl = ollamaBaseUrl;
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
-    public String getOllamaModel() {
-        return ollamaModel;
+    public String getGeminiModel() {
+        return geminiModel;
     }
 
-    public void setOllamaModel(String ollamaModel) {
-        this.ollamaModel = ollamaModel;
+    public void setGeminiModel(String geminiModel) {
+        this.geminiModel = geminiModel;
+    }
+
+    public String getGeminiBaseUrl() {
+        return geminiBaseUrl;
+    }
+
+    public void setGeminiBaseUrl(String geminiBaseUrl) {
+        this.geminiBaseUrl = geminiBaseUrl;
     }
 
     public int getTimeoutMs() {
@@ -74,4 +87,3 @@ public class ChatbotAiProperties {
         this.cooldownSeconds = cooldownSeconds;
     }
 }
-

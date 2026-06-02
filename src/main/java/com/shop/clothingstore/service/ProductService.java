@@ -2,6 +2,7 @@ package com.shop.clothingstore.service;
 
 import java.io.IOException;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,6 @@ import com.shop.clothingstore.dto.ProductCreateDTO;
 import com.shop.clothingstore.dto.ProductFilterDTO;
 import com.shop.clothingstore.dto.ProductUpdateDTO;
 import com.shop.clothingstore.dto.VariantDTO;
-import com.shop.clothingstore.entity.GarmentType;
 import com.shop.clothingstore.entity.Product;
 import com.shop.clothingstore.entity.ProductImage;
 import com.shop.clothingstore.entity.ProductVariant;
@@ -98,24 +98,13 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         product.refreshMinPrice();
 
         if (dto.getImages() != null && !dto.getImages().isEmpty()) {
-            saveImages(product, dto.getImages(), dto.getPrimaryImageIndex());
+            // File-input order == gallery order; index 0 is the cover/primary.
+            saveImages(product, dto.getImages(), dto.getPrimaryImageIndex(), 0);
         }
 
-        // Handle Try-On garment image (optional during create)
-        if (dto.getGarmentImage() != null && !dto.getGarmentImage().isEmpty()) {
-            String garmentUrl = fileStorageService.upload(dto.getGarmentImage(), "tryon-garments");
-            product.setGarmentProcessedUrl(garmentUrl);
-            product.setTryOnEnabled(true);
-
-            GarmentType gType = GarmentType.UPPER_BODY;
-            if (dto.getGarmentType() != null) {
-                try {
-                    gType = GarmentType.valueOf(dto.getGarmentType());
-                } catch (IllegalArgumentException ignored) {}
-            }
-            product.setGarmentType(gType);
-            log.info("Try-on enabled during creation | garment={} type={}", garmentUrl, gType);
-        }
+        // NOTE: Try-On garment is handled by the controller via TryOnService
+        // (AI background-removal with fallback) AFTER the product is persisted,
+        // so it is consistent with the edit flow and stays out of this transaction.
 
         try {
             Product saved = save(product);
@@ -182,13 +171,89 @@ public class ProductService extends GenericServiceBase<Product, Long> {
             }
         }
 
-        if (dto.getNewImages() != null && !dto.getNewImages().isEmpty()) {
-            // Reset primary flag on all existing images
-            product.getImages().forEach(img -> img.setPrimaryImage(false));
-            saveImages(product, dto.getNewImages(), dto.getPrimaryImageIndex());
-        }
+        applyImageOrder(product, dto);
 
         return save(product);
+    }
+
+    // =====================================================
+    // APPLY IMAGE ORDER (edit)
+    // Reorders existing images and appends new ones according to the
+    // imageOrder tokens sent by the gallery UI:
+    //   "E{existingId}" → keep existing image at this position
+    //   "N{newIndex}"   → new uploaded image (index into dto.newImages)
+    // sortOrder is assigned sequentially; the first image becomes primary.
+    // Falls back to legacy append behaviour when imageOrder is empty.
+    // =====================================================
+    private void applyImageOrder(Product product, ProductUpdateDTO dto) throws IOException {
+
+        List<MultipartFile> newImages = dto.getNewImages() != null ? dto.getNewImages() : List.of();
+        List<String> order = dto.getImageOrder();
+
+        // ── Legacy fallback: no explicit order → append new images after existing ──
+        if (order == null || order.isEmpty()) {
+            if (!newImages.isEmpty()) {
+                int baseOrder = product.getImages().stream()
+                        .map(img -> img.getSortOrder() != null ? img.getSortOrder() : 0)
+                        .max(Integer::compareTo).orElse(-1) + 1;
+                // Keep an existing primary if there is one; otherwise primary stays as-is.
+                saveImages(product, newImages, null, baseOrder);
+            }
+            return;
+        }
+
+        // ── Upload all new images first (index aligns with "N{k}" tokens) ──
+        List<ProductImage> uploaded = new ArrayList<>();
+        for (MultipartFile file : newImages) {
+            if (file == null || file.isEmpty()) {
+                uploaded.add(null); // preserve index alignment
+                continue;
+            }
+            String imageUrl = fileStorageService.upload(file, "products");
+            ProductImage image = new ProductImage();
+            image.setImageUrl(imageUrl);
+            uploaded.add(image);
+        }
+
+        // Map existing images by id (after deletions already applied)
+        Map<Long, ProductImage> existingById = new HashMap<>();
+        for (ProductImage img : product.getImages()) {
+            existingById.put(img.getId(), img);
+        }
+
+        int position = 0;
+        for (String token : order) {
+            if (token == null || token.length() < 2) continue;
+            char kind = token.charAt(0);
+            ProductImage target = null;
+            try {
+                if (kind == 'E') {
+                    target = existingById.get(Long.parseLong(token.substring(1)));
+                } else if (kind == 'N') {
+                    int idx = Integer.parseInt(token.substring(1));
+                    if (idx >= 0 && idx < uploaded.size()) {
+                        target = uploaded.get(idx);
+                        if (target != null) product.addImage(target);
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                continue;
+            }
+            if (target == null) continue;
+            target.setSortOrder(position);
+            target.setPrimaryImage(position == 0);
+            position++;
+        }
+
+        // Safety net: any uploaded image not referenced by a token still gets added.
+        for (ProductImage img : uploaded) {
+            if (img != null && img.getProduct() == null) {
+                product.addImage(img);
+                img.setSortOrder(position);
+                img.setPrimaryImage(position == 0);
+                position++;
+            }
+        }
     }
 
     // =====================================================
@@ -288,12 +353,14 @@ public class ProductService extends GenericServiceBase<Product, Long> {
     // =====================================================
     private void saveImages(Product product,
             List<MultipartFile> files,
-            Integer primaryIndex) throws IOException {
+            Integer primaryIndex,
+            int baseOrder) throws IOException {
 
         if (files == null || files.isEmpty()) {
             return;
         }
 
+        int order = baseOrder;
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
             if (file.isEmpty()) {
@@ -302,8 +369,10 @@ public class ProductService extends GenericServiceBase<Product, Long> {
             String imageUrl = fileStorageService.upload(file, "products");
             ProductImage image = new ProductImage();
             image.setImageUrl(imageUrl);
+            image.setSortOrder(order);
             image.setPrimaryImage(primaryIndex != null && i == primaryIndex);
             product.addImage(image);
+            order++;
         }
     }
 
