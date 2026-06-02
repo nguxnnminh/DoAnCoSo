@@ -10,7 +10,7 @@
 **ClothingStore** là nền tảng thương mại điện tử bán quần áo đầy đủ tính năng, tích hợp trí tuệ nhân tạo và ứng dụng mobile. Điểm nổi bật:
 
 - **Virtual Try-On** — Thử đồ ảo bằng AI (Replicate IDM-VTON cloud → fallback CatVTON local trên GPU), thử cả bộ (áo + quần) trên ảnh cá nhân
-- **AI Chatbot** — Tư vấn bằng ngôn ngữ tự nhiên (Google Gemini + function calling, truy vấn DB thật, hiểu tiếng Việt)
+- **AI Chatbot** — Google Gemini 2.5 Flash + function calling, tự truy vấn DB sản phẩm thật, tư vấn tiếng Việt
 - **Flutter Mobile App** — Ứng dụng iOS/Android đầy đủ tính năng (Riverpod + Dio + JWT)
 - **Real-time Notifications** — SSE (Server-Sent Events) cho thông báo đơn hàng tức thì
 - **Full-text Search** — MySQL FULLTEXT INDEX + autocomplete gợi ý tìm kiếm
@@ -28,8 +28,8 @@
 | Mobile | Flutter · Dart 3.11+ · Riverpod 2.6 · GoRouter 14 · Dio 5 |
 | Database | MySQL 8 · Spring Session JDBC · Caffeine Cache |
 | Auth | BCrypt · Session (Web) · JWT HS256 (API/Mobile) |
-| AI Chatbot | Google Gemini (gemini-2.5-flash) · function calling · truy vấn DB |
-| Virtual Try-On | Python FastAPI · Replicate IDM-VTON (cloud) → CatVTON local (GPU) · SegFormer human-parsing |
+| AI Chatbot | Google Gemini 2.5 Flash · function calling · truy vấn DB thật |
+| Virtual Try-On | Python FastAPI · Replicate IDM-VTON (cloud) → CatVTON local (GPU) · SegFormer |
 | Real-time | Server-Sent Events (SSE) |
 | Email | Gmail SMTP (async) |
 | Export | Apache POI (Excel .xlsx) |
@@ -57,8 +57,8 @@
 | Hồ sơ | Cập nhật thông tin · đổi mật khẩu · địa chỉ giao hàng |
 | Thông báo | SSE real-time (xác nhận đơn hàng · cập nhật giao hàng) |
 | **Referral** | Chia sẻ mã giới thiệu · cả 2 bên nhận coupon khi đơn đầu hoàn tất |
-| **Virtual Try-On** | Upload ảnh · thử 1 sản phẩm · thử full outfit (áo + quần) |
-| **AI Chatbot** | Tư vấn tiếng Việt · lọc giá tự động · FAQ · tìm sản phẩm |
+| **Virtual Try-On** | Upload ảnh · thử 1 sản phẩm · thử full outfit (áo + quần) · lightbox phóng to ảnh kết quả |
+| **AI Chatbot** | Gemini function calling · tư vấn tiếng Việt · tìm SP theo loại/màu/giá · FAQ chính sách |
 | Trang tĩnh | Liên hệ · Đổi trả · Bảng size |
 
 ### Xác thực
@@ -73,7 +73,8 @@
 | Module | Tính năng |
 |--------|-----------|
 | Dashboard | KPIs · biểu đồ doanh thu ngày/tuần/tháng/năm · cảnh báo tồn kho thấp · xuất Excel |
-| Sản phẩm | CRUD · nhiều ảnh · variants (size/màu/giá/stock) · bật/tắt Try-On per sản phẩm |
+| Sản phẩm | CRUD · gallery ảnh kéo-thả sắp xếp · nút ✕ xóa từng ảnh · ảnh đầu = bìa · variants (size/màu/giá/stock) |
+| Try-On Admin | Toggle bật/tắt per sản phẩm · upload garment · chọn loại · lưu chung 1 nút Save |
 | Danh mục | CRUD Category + SubCategory |
 | Đơn hàng | Xem tất cả · cập nhật trạng thái · duyệt yêu cầu hủy |
 | Người dùng | Danh sách · khóa/mở tài khoản · gán quyền ADMIN |
@@ -121,7 +122,7 @@ GET    /api/categories                 Tất cả danh mục (có subcategory l�
 GET    /api/subcategories              Tất cả subcategory
 
 # AI & Try-On
-POST   /api/chatbot                    Chat với AI chatbot
+POST   /api/chatbot                    Chat với AI chatbot (Gemini function calling)
 POST   /api/tryon/upload-person        Upload ảnh người dùng
 POST   /api/tryon/generate             Thử 1 sản phẩm
 POST   /api/tryon/generate-outfit      Thử full outfit (áo + quần)
@@ -149,12 +150,12 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 | Thành phần | Phiên bản | Bắt buộc |
 |------------|-----------|----------|
-| Java (Temurin JDK) | 17+ | Bắt buộc |
-| MySQL | 8.x | Bắt buộc |
-| Python | 3.10+ | Chỉ nếu dùng Try-On |
+| Java (Temurin JDK) | 17+ | ✅ Bắt buộc |
+| MySQL | 8.x | ✅ Bắt buộc |
+| Python | 3.10+ | Chỉ nếu dùng Virtual Try-On |
 | GPU NVIDIA (CUDA) | ≥ 4GB VRAM | Chỉ cho CatVTON local; bỏ qua nếu dùng Replicate cloud |
 | Flutter SDK | 3.11+ | Chỉ nếu build mobile app |
-| Gemini API key | — | Tùy chọn (chatbot AI); free tại Google AI Studio |
+| Gemini API key | — | Tùy chọn; free tại [Google AI Studio](https://aistudio.google.com/apikey) |
 
 ---
 
@@ -185,8 +186,8 @@ spring.datasource.password=
 
 ### 3. Chạy Spring Boot Backend
 
-> **Bắt buộc:** đặt biến môi trường `DEV_ADMIN_PASSWORD` trước khi chạy — `DataInitializer`
-> yêu cầu nó để tạo tài khoản admin, nếu thiếu app sẽ dừng khi khởi động.
+> **Bắt buộc:** đặt biến môi trường `DEV_ADMIN_PASSWORD` trước khi chạy.  
+> `DataInitializer` yêu cầu nó để tạo tài khoản admin — thiếu là app dừng khi khởi động.
 
 ```bash
 # Windows (PowerShell)
@@ -206,14 +207,36 @@ Server khởi động tại: **http://localhost:8080**
 
 | Role | Email | Mật khẩu |
 |------|-------|----------|
-| Admin | admin@test.com | `DEV_ADMIN_PASSWORD` (bạn tự đặt, bắt buộc) |
-| User | user@test.com | `User@Dev2024!` (hoặc `DEV_USER_PASSWORD` nếu đặt) |
+| Admin | admin@test.com | `DEV_ADMIN_PASSWORD` (bạn tự đặt) |
+| User | user@test.com | `User@Dev2024!` |
 
 > Ngoài ra còn 4 user demo: `lan@test.com` · `minh@test.com` · `huong@test.com` · `duc@test.com` (cùng mật khẩu user).
 
 ---
 
-### 4. (Tùy chọn) Chạy Flutter Mobile App
+### 4. (Tùy chọn) Bật AI Chatbot với Google Gemini
+
+Chatbot là **AI-first**: dùng Google Gemini 2.5 Flash với **function calling** để tự truy vấn database sản phẩm thật (tìm theo loại/màu/giá, xem bán chạy, chi tiết size/tồn kho) rồi tổng hợp tư vấn.
+
+Nếu **chưa cấu hình API key**, chatbot vẫn trả lời (fallback gợi ý sản phẩm bán chạy) — **không bao giờ lỗi hay im lặng**.
+
+```bash
+# Lấy API key free tại: https://aistudio.google.com/apikey
+# → chọn "Create API key in new project" để được free tier đầy đủ
+
+# Windows (PowerShell)
+$env:GEMINI_API_KEY = "AIza...your-key..."
+
+# macOS/Linux
+export GEMINI_API_KEY="AIza...your-key..."
+```
+
+> **Lưu ý:** Không hardcode key vào `application.properties` (tránh lộ khi push git).  
+> Muốn đổi model: set `GEMINI_MODEL=gemini-2.5-flash` (hoặc tên khác từ `ListModels`).
+
+---
+
+### 5. (Tùy chọn) Chạy Flutter Mobile App
 
 ```bash
 cd mobile-app
@@ -227,26 +250,6 @@ flutter run
 
 > Mặc định app kết nối tới `http://10.0.2.2:8080` (Android emulator) hoặc `http://localhost:8080` (iOS simulator).  
 > Sửa base URL trong `lib/core/network/api_client.dart` nếu cần.
-
----
-
-### 5. (Tùy chọn) Bật AI Chatbot với Google Gemini
-
-> Chatbot là **AI-first**: dùng Google Gemini với **function calling** để tự truy vấn
-> database sản phẩm thật (tìm theo loại/màu/giá, bán chạy, chi tiết size/tồn kho) rồi tư vấn.
-> Nếu **chưa cấu hình API key**, chatbot vẫn trả lời (fallback gợi ý sản phẩm bán chạy) —
-> **không bao giờ lỗi hay im lặng**.
-
-```bash
-# Lấy API key free tại Google AI Studio: https://aistudio.google.com/apikey
-# Windows (PowerShell):
-$env:GEMINI_API_KEY = "AIza...your-key..."
-# Linux/macOS:
-export GEMINI_API_KEY="AIza...your-key..."
-```
-
-Đặt biến môi trường `GEMINI_API_KEY` (model mặc định `gemini-2.5-flash`) rồi chạy app —
-AI tự động kích hoạt. **Không** nên hardcode key trực tiếp vào `application.properties`.
 
 ---
 
@@ -264,27 +267,25 @@ python main.py
 
 Server có **2 tầng inference, tự động fallback**:
 
-1. **Replicate IDM-VTON (cloud)** — nhanh, dùng khi đặt `REPLICATE_API_TOKEN` trong `.env`
-   và còn quota. Khi hết quota (402/429) tự chuyển sang local.
-2. **CatVTON local (GPU)** — chạy khi không có token hoặc cloud hết quota. Cần 2 thứ
-   (đều **không** nằm trong git do quá nặng / là code bên thứ ba):
+1. **Replicate IDM-VTON (cloud)** — nhanh, dùng khi đặt `REPLICATE_API_TOKEN` trong `.env`.  
+   Khi hết quota (402/429) tự chuyển sang local.
+2. **CatVTON local (GPU)** — chạy khi không có token hoặc cloud hết quota.  
+   Cần 2 thứ (đều **không** nằm trong git do quá nặng):
 
    ```bash
-   # a) Source CatVTON (pipeline) — thư mục catvton_src/ (~38MB)
+   # a) Source CatVTON (~38MB)
    git clone https://github.com/Zheng-Chong/CatVTON catvton_src
 
    # b) Weights (~4GB: SD-inpainting + CatVTON attention + VAE)
    python download_models.py
    ```
 
-   Bộ tạo mask SegFormer (`mattmdjaga/segformer_b2_clothes`, ~110MB) tự tải lần đầu chạy.
-   (Đường tạo mask đã inline `hull_mask` nên **không cần detectron2/DensePose/SCHP**.)
+   SegFormer human-parsing (`mattmdjaga/segformer_b2_clothes`, ~110MB) tự tải lần đầu chạy.
 
-> **Tinh chỉnh local (env, không cần sửa code):** `TRYON_STEPS` (mặc định 20),
-> `TRYON_SCHEDULER` (`unipc`/`dpm`/`ddim`), `TRYON_PARSER_DEVICE` (`cpu`/`cuda`), `TRYON_CFG`.
+> Tinh chỉnh qua biến môi trường: `TRYON_STEPS` (mặc định 20), `TRYON_SCHEDULER` (`unipc`/`dpm`/`ddim`), `TRYON_PARSER_DEVICE` (`cpu`/`cuda`), `TRYON_CFG`.  
 > Trên RTX 3050Ti 4GB: cả bộ (áo + quần) ~1.3–1.7 phút.
 
-> **Mock mode**: thêm `tryon.mock=true` vào `application.properties` để dùng ảnh giả cho mục đích phát triển.
+> **Mock mode**: thêm `tryon.mock=true` vào `application.properties` để dùng ảnh giả cho phát triển.
 
 ---
 
@@ -296,20 +297,25 @@ clothingstore/
 │   ├── config/          SecurityConfig · CacheConfig · AsyncConfig · DataInitializer
 │   ├── controller/
 │   │   ├── (web)        Auth · Cart · Checkout · Order · Profile · Shop · TryOn · Wishlist
-│   │   ├── admin/       Dashboard · Product · Category · Order · User · Coupon
+│   │   ├── admin/       Dashboard · Product · Category · Order · User · Coupon · TryOn
 │   │   └── api/         REST endpoints (JWT-based)
 │   ├── dto/             Form DTOs · API request/response
 │   ├── entity/          JPA entities (19 bảng + enums)
 │   ├── repository/      Spring Data JPA (19 repos)
 │   ├── security/        JWT · LoginRateLimit · RequestIdFilter
-│   └── service/         Business logic · AI Chatbot · Try-On · Email · SSE · Storage
+│   └── service/
+│       ├── AiChatbotService.java    Gemini function calling · tool execution
+│       ├── TryOnService.java        Preprocess garment · outfit compositing
+│       ├── ProductService.java      CRUD · image ordering · search
+│       └── ai/
+│           └── GeminiChatClient.java  REST client cho Gemini generateContent API
 │
 ├── src/main/resources/
 │   ├── application.properties
 │   ├── templates/
-│   │   ├── layout/      base.html · admin.html (master layouts)
+│   │   ├── layout/      base.html · admin.html (master layouts + chatbot widget)
 │   │   ├── auth/        login · register · forgot/reset password
-│   │   ├── admin/       dashboard · products · categories · orders · users · coupons
+│   │   ├── admin/       dashboard · products (create/edit) · categories · orders · users · coupons
 │   │   └── shop/        home · products · detail · cart · checkout · orders · profile
 │   │                    wishlist · coupons · tryon-studio · contact · sizing · returns
 │   └── static/          tailwind.css · JS · images
@@ -318,7 +324,8 @@ clothingstore/
 │   ├── lib/
 │   │   ├── main.dart    App entry
 │   │   ├── core/        network/api_client.dart (Dio + JWT) · theme · config
-│   │   ├── features/    auth · home · shop · product · cart · checkout · orders · wishlist · search · profile · notifications
+│   │   ├── features/    auth · home · shop · product · cart · checkout
+│   │   │                orders · wishlist · search · profile · notifications
 │   │   ├── models/      Data models
 │   │   ├── router/      GoRouter
 │   │   └── shared/      Widgets dùng chung
@@ -327,17 +334,16 @@ clothingstore/
 ├── python-tryon-server/       FastAPI bridge · Replicate IDM-VTON → CatVTON local
 │   ├── main.py                Server chính (dispatch · SegFormer mask · composite outfit)
 │   ├── download_models.py     Tải weights CatVTON local (~4GB)
-│   ├── catvton_src/           Source CatVTON (pipeline · cloth_masker · DensePose/SCHP)
+│   ├── catvton_src/           Source CatVTON (pipeline · cloth_masker)
 │   ├── weights/               SD-inpainting · CatVTON · VAE (sau khi download)
 │   └── requirements.txt
 │
 ├── docs/
 │   ├── features.md      Danh sách tính năng đầy đủ
 │   ├── changelog.md     Lịch sử thay đổi (BEFORE/AFTER)
-│   ├── feature-plan.md  Kế hoạch tính năng mới
 │   └── work-log.md      Nhật ký công việc chi tiết
 │
-├── uploads/                   Ảnh sản phẩm & review do người dùng upload
+├── uploads/                   Ảnh sản phẩm & review do người dùng upload (ngoài git)
 ├── pom.xml                    Maven build
 └── package.json               Frontend tooling (Tailwind, PostCSS)
 ```
@@ -349,21 +355,18 @@ clothingstore/
 ```
 User ──── Role
  │
- ├── Order ──── OrderItem ──── ProductVariant ──── Product ──── ProductImage
+ ├── Order ──── OrderItem ──── ProductVariant ──── Product ──── ProductImage (sort_order)
  │      │                                              │
- │      └── Coupon ◄── UserCoupon ◄── User             ├── Category
- │                                                     └── SubCategory
- ├── address (field địa chỉ mặc định trên User)
- ├── WishlistItem ──── Product
+ │      └── Coupon ◄── UserCoupon ◄── User             ├── SubCategory ──── Category
+ │                                                     ├── GarmentType (try-on)
+ ├── WishlistItem ──── Product                         └── garmentProcessedUrl
  ├── Review ──── Product  (có ảnh đính kèm)
  ├── Notification
  └── PasswordResetToken
-
-Product ──── GarmentType (UPPER_BODY / LOWER_BODY — cho Try-On)
-Order ──── Payment · Shipment · AuditLog · StockLog
 ```
 
-**19 entity (@Entity) + enums** (Role · GarmentType · OrderStatus · SizeType) · `spring.jpa.hibernate.ddl-auto=update` (tự tạo/cập nhật schema)
+**19 entity (@Entity) + enums** (Role · GarmentType · OrderStatus · SizeType)  
+`spring.jpa.hibernate.ddl-auto=update` — schema tự tạo/cập nhật khi khởi động (kể cả cột mới như `sort_order`).
 
 ---
 
@@ -379,24 +382,21 @@ User Upload ──► Java API ──► Python FastAPI (port 8081)
               Replicate IDM-VTON           CatVTON local (GPU, fp16, 768×1024)
                  (cloud, cuuupid)          │
                                            ├─ SegFormer parse → agnostic mask
-                                           │  (protect mặt/tóc/tay/đồ còn lại)
+                                           │  (bảo vệ mặt/tóc/tay/đồ còn lại)
                                            └─ UniPC @ 20 steps
                         └───────────┬───────────┘
                                     ▼
                               Result JPEG
 ```
 
-- **Replicate IDM-VTON** (`cuuupid/idm-vton`): tầng cloud mặc định khi có `REPLICATE_API_TOKEN`;
-  trên 402/429 tự chuyển sang local (sticky cho cả tiến trình).
-- **CatVTON local** (`zhengchong/CatVTON`, mix-48k-1024): chạy trên GPU ≥ 4GB VRAM. Mask tạo bằng
-  human-parsing **SegFormer** (thay cho DensePose+SCHP vì detectron2 không build được trên Windows).
-- **Outfit (áo + quần)**: parse 1 lần → 2 mask không chồng nhau → chạy CatVTON **2 lượt trên ảnh gốc**
-  → composite từng vùng trang phục (KHÔNG chain tuần tự).
-- **Mock mode**: trả ảnh giả ngay, dùng cho phát triển.
+- **Outfit (áo + quần)**: parse 1 lần → 2 mask không chồng nhau → chạy CatVTON **2 lượt trên ảnh gốc** → composite từng vùng (KHÔNG chain tuần tự).
+- **Garment types** (enum `GarmentType`): `UPPER_BODY` · `LOWER_BODY`
+- **Mock mode**: trả ảnh giả ngay, không cần Python server.
 
-**Garment types được hỗ trợ** (enum `GarmentType`):
-- `UPPER_BODY` — áo, hoodie, jacket, blouse, …
-- `LOWER_BODY` — quần, shorts, skirt, …
+### Giao diện Try-On (người dùng)
+
+- **Try-On Studio** (`/tryon-studio`): sidebar 420px · gallery sản phẩm kéo-thả theo tab (Tops / Bottoms / All) · upload ảnh người dùng hiện to (max 420px) · ảnh kết quả rõ (min-height 300px) · bấm ảnh để phóng to lightbox toàn màn hình.
+- **Product Detail modal**: modal rộng 1040px · 2 cột (upload trái · kết quả phải) · ảnh người dùng max 480px · ảnh kết quả max 520px · lightbox zoom khi bấm.
 
 ---
 
@@ -406,20 +406,45 @@ User Upload ──► Java API ──► Python FastAPI (port 8081)
 User: "Tìm áo hoodie dưới 300k màu đen"
          │
          ▼
-  AiChatbotService (Gemini)
-  ├─ System prompt: chính sách + danh mục (đọc từ DB)
-  ├─ Gemini quyết định gọi tool:
-  │    search_products / get_best_sellers / get_product_details
-  ├─ Tool truy vấn ProductService → dữ liệu sản phẩm THẬT
-  └─ Gemini tổng hợp lời tư vấn (kèm thẻ sản phẩm)
+  AiChatbotService
+  ├─ System prompt: chính sách NOVA + danh mục (đọc động từ DB)
+  ├─ Gemini 2.5 Flash quyết định gọi tool:
+  │    ├─ search_products(subcategory, color, maxPrice, limit)
+  │    ├─ get_best_sellers(limit)
+  │    └─ get_product_details(name)
+  ├─ Tool truy vấn ProductService / ProductRepository → dữ liệu THẬT
+  └─ Gemini tổng hợp lời tư vấn tự nhiên (hệ thống hiển thị thẻ SP kèm theo)
          │
          ▼
-  Response: danh sách sản phẩm + tư vấn tự nhiên
+  ChatbotResponse { message, products[] }
 ```
 
-- AI-first: hầu như không còn rule cứng; AI tự gọi hàm để lấy dữ liệu DB
-- Lịch sử hội thoại: tối đa 12 lượt (session-based)
-- Luôn trả lời — fallback gợi ý bán chạy khi chưa có API key / AI lỗi
+**Đặc điểm:**
+- Gần như không có rule-based — AI tự quyết định khi nào cần query DB
+- System prompt nhồi toàn bộ chính sách (ship · đổi trả · size · thanh toán) + danh mục động từ DB
+- Lịch sử hội thoại: tối đa 12 lượt (session-based), hiểu câu hỏi nối tiếp ("còn màu khác không?")
+- Fallback: khi chưa có API key hoặc AI lỗi → trả danh sách bán chạy, không bao giờ im lặng
+- Cooldown tự động 5 phút khi gặp 429 / 401 tránh spam API
+
+---
+
+## Admin — Quản lý sản phẩm
+
+### Gallery ảnh kéo-thả (mới)
+
+Trang **Thêm** và **Sửa** sản phẩm đều có cùng gallery:
+
+- **Kéo-thả** để sắp xếp lại thứ tự ảnh
+- **Ảnh đầu tiên** tự động trở thành ảnh bìa (nhãn **COVER** màu xanh)
+- **Nút ✕** trên mỗi ảnh để xóa ngay lập tức
+- Trang **Sửa**: trộn chung ảnh cũ + ảnh mới vào 1 gallery duy nhất, thứ tự cuối cùng được lưu vào cột `sort_order`
+
+### Try-On (unified save)
+
+- Card "Virtual Try-On" nằm ngay trong form chính (không còn form riêng)
+- **Toggle on/off**: bật → hiện ô upload garment + chọn loại; tắt → ẩn gọn
+- Hiển thị ảnh garment hiện tại nếu đã có; ô upload chỉ cần điền khi muốn thay
+- **1 nút Save duy nhất** lưu tất cả: thông tin sản phẩm + variants + ảnh (theo thứ tự gallery) + trạng thái/ảnh try-on
 
 ---
 
@@ -441,10 +466,10 @@ User A chia sẻ mã giới thiệu ──► User B đăng ký với mã
 
 ## Real-time Notifications (SSE)
 
-Server-Sent Events không cần WebSocket — hoạt động trên mọi browser:
+Server-Sent Events — hoạt động trên mọi browser, không cần WebSocket:
 
-- Khách hàng nhận thông báo: xác nhận đơn hàng, cập nhật giao hàng, đơn đã giao
-- Admin nhận thông báo: đơn mới vào, yêu cầu hủy, thông báo hệ thống
+- **Khách hàng**: xác nhận đơn hàng · cập nhật giao hàng · đơn đã giao
+- **Admin**: đơn mới vào · yêu cầu hủy · thông báo hệ thống
 - Tự động reconnect khi mất kết nối
 
 ---
@@ -456,7 +481,7 @@ Server-Sent Events không cần WebSocket — hoạt động trên mọi browser
 - **Headers**: `X-Frame-Options: DENY` · `HSTS 1 năm` · `X-Content-Type-Options: nosniff` · `Content-Security-Policy`
 - **Upload**: Validate magic bytes (không tin vào đuôi file) · chống path traversal
 - **Rate limit**: Tối đa 5 lần login sai/IP/15 phút
-- **Password**: BCrypt với salt (10 rounds)
+- **Password**: BCrypt (10 rounds)
 - **Actuator**: `/actuator/health` public · `/actuator/**` chỉ ADMIN
 
 ---
@@ -468,14 +493,14 @@ Server-Sent Events không cần WebSocket — hoạt động trên mọi browser
 | `/` | Trang chủ (hero slider + best sellers) |
 | `/products` | Tất cả sản phẩm |
 | `/products/{category}` | Sản phẩm theo danh mục |
-| `/product/{slug}` | Chi tiết sản phẩm |
+| `/product/{slug}` | Chi tiết sản phẩm (+ try-on modal) |
 | `/cart` | Giỏ hàng |
 | `/checkout` | Thanh toán |
 | `/checkout/success` | Xác nhận đặt hàng |
 | `/my-orders` | Đơn hàng của tôi |
 | `/wishlist` | Yêu thích |
 | `/my-coupons` | Coupon của tôi |
-| `/tryon-studio` | Thử đồ ảo |
+| `/tryon-studio` | Thử đồ ảo (studio đầy đủ) |
 | `/profile` | Hồ sơ cá nhân & địa chỉ |
 | `/contact` | Liên hệ |
 | `/returns` | Chính sách đổi trả |
@@ -487,32 +512,32 @@ Server-Sent Events không cần WebSocket — hoạt động trên mọi browser
 
 ## Biến môi trường
 
-### Backend (`application.properties` hoặc env)
+### Backend
 
 | Biến | Mặc định | Mô tả |
 |------|---------|-------|
-| `DEV_ADMIN_PASSWORD` | *(không có — bắt buộc)* | Mật khẩu tài khoản admin seed; thiếu là app dừng khi khởi động |
+| `DEV_ADMIN_PASSWORD` | *(bắt buộc)* | Mật khẩu admin seed; thiếu là app dừng khi khởi động |
 | `DEV_USER_PASSWORD` | `User@Dev2024!` | Mật khẩu các user demo |
 | `MAIL_USERNAME` | nguyennhatminh1811@gmail.com | Gmail gửi email |
 | `MAIL_PASSWORD` | *(app password)* | Gmail App Password |
 | `JWT_SECRET` | *(default local key)* | JWT signing key (≥ 32 ký tự, thay cho production) |
 | `APP_PUBLIC_BASE_URL` | http://localhost:8080 | Base URL public (dùng trong link email) |
 | `CHATBOT_AI_ENABLED` | true | Bật/tắt AI chatbot |
-| `GEMINI_API_KEY` | *(trống)* | Google Gemini API key (free tại AI Studio) |
-| `GEMINI_MODEL` | gemini-2.5-flash | Model Gemini |
+| `GEMINI_API_KEY` | *(trống)* | Google Gemini API key — **không hardcode vào file** |
+| `GEMINI_MODEL` | gemini-2.5-flash | Model Gemini (kiểm tra model khả dụng qua ListModels API) |
 | `TRYON_PYTHON_URL` | http://localhost:8081 | Python Try-On server |
-| `MOCK_INFERENCE` | false | Mock Try-On (không cần GPU, trả ảnh giả) |
+| `MOCK_INFERENCE` | false | Mock Try-On (trả ảnh giả, không cần GPU/Python) |
 
 ### Python Try-On Server (`.env` trong `python-tryon-server/`)
 
 | Biến | Mặc định | Mô tả |
 |------|---------|-------|
-| `REPLICATE_API_TOKEN` | *(để trống)* | Token Replicate; có token → ưu tiên IDM-VTON cloud |
-| `HF_TOKEN` | *(để trống)* | HuggingFace token (tùy chọn, để tải weights private/tăng rate limit) |
-| `TRYON_STEPS` | 20 | Số bước diffusion local (16–25; thấp hơn = nhanh hơn) |
-| `TRYON_SCHEDULER` | unipc | `unipc` / `dpm` / `ddim` (DDIM chậm hơn nhưng là cấu hình gốc) |
+| `REPLICATE_API_TOKEN` | *(trống)* | Token Replicate; có token → ưu tiên IDM-VTON cloud |
+| `HF_TOKEN` | *(trống)* | HuggingFace token (tùy chọn) |
+| `TRYON_STEPS` | 20 | Số bước diffusion (16–25) |
+| `TRYON_SCHEDULER` | unipc | `unipc` / `dpm` / `ddim` |
 | `TRYON_CFG` | 2.5 | Guidance scale |
-| `TRYON_PARSER_DEVICE` | cpu | Thiết bị chạy SegFormer parser (`cpu` / `cuda`) |
+| `TRYON_PARSER_DEVICE` | cpu | Thiết bị chạy SegFormer (`cpu` / `cuda`) |
 | `TRYON_PARSER_MODEL` | mattmdjaga/segformer_b2_clothes | Model human-parsing |
 
 ---
@@ -526,13 +551,13 @@ Server-Sent Events không cần WebSocket — hoạt động trên mọi browser
 # Build JAR
 ./mvnw clean package -DskipTests
 
-# Chạy JAR
-java -jar target/clothingstore-*.jar
+# Chạy JAR (với env)
+GEMINI_API_KEY=... DEV_ADMIN_PASSWORD=... java -jar target/clothingstore-*.jar
 
-# Build Flutter app (Android APK)
+# Build Flutter (Android APK)
 cd mobile-app && flutter build apk --release
 
-# Build Flutter app (iOS)
+# Build Flutter (iOS)
 cd mobile-app && flutter build ios --release
 ```
 
@@ -540,12 +565,16 @@ cd mobile-app && flutter build ios --release
 
 ## Roadmap
 
-- [x] Real-time notification (SSE) — toast real-time, admin nhận đơn mới ngay
-- [x] Full-text search (MySQL FULLTEXT) — MATCH AGAINST + autocomplete
-- [x] Hero banner slider — 3 slide tự xoay
-- [x] Review có ảnh đính kèm — upload tối đa 5 ảnh/review
-- [x] Hệ thống mã giới thiệu (referral) — cả 2 bên nhận coupon
-- [x] Flutter mobile app — iOS/Android đầy đủ tính năng (Riverpod + JWT)
+- [x] Real-time notification (SSE)
+- [x] Full-text search (MySQL FULLTEXT) + autocomplete
+- [x] Hero banner slider
+- [x] Review có ảnh đính kèm
+- [x] Hệ thống mã giới thiệu (referral)
+- [x] Flutter mobile app (Riverpod + JWT)
+- [x] Admin image gallery — kéo-thả sắp xếp + ✕ xóa + ảnh bìa
+- [x] Admin Try-On — toggle on/off + 1 nút Save cho cả trang
+- [x] AI Chatbot — Gemini 2.5 Flash + function calling + truy vấn DB thật
+- [x] Try-On UI — ảnh to hơn + lightbox phóng to
 - [ ] Thanh toán online (VietQR / SePay)
 - [ ] Push notifications (Firebase FCM)
 
