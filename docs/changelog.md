@@ -1,317 +1,296 @@
-# Changelog — Lịch sử thay đổi & Kế hoạch phát triển
+# Changelog — Lịch sử thay đổi
 
-> **Quy tắc ghi file này:**
-> - Mỗi khi sửa hoặc thêm tính năng, **luôn ghi vào đây** theo format BEFORE/AFTER.
-> - Phần **PLANNED** là những gì sẽ làm tiếp theo.
-> - Phần **DONE** là những gì đã thay đổi kể từ khi bắt đầu dùng file này.
->
-> 📋 **Xem bảng chi tiết vị trí file + giải thích từng thay đổi:** [work-log.md](work-log.md)
+> Format: mỗi entry có **BEFORE** (trạng thái cũ), **AFTER** (trạng thái mới), **Files** và **Lý do**.  
+> Xem chi tiết kỹ thuật từng file: [work-log.md](work-log.md)
 
 ---
 
-## FORMAT MẪU
+## DONE — Đã thay đổi (mới nhất trước)
 
-```
-### [YYYY-MM-DD] Tiêu đề thay đổi
+---
+
+### [2026-06-02] Viết lại toàn bộ tài liệu từ code
 
 **BEFORE:**
-Mô tả trạng thái cũ — code cũ làm gì, vấn đề gì.
+Docs cũ không còn chính xác sau nhiều thay đổi lớn (Gemini migration, gallery kéo-thả, unified save Try-On). Nhiều endpoint, field, và logic không được ghi nhận.
 
 **AFTER:**
-Mô tả trạng thái mới — code mới làm gì, cải thiện thế nào.
+- `README.md`: viết lại toàn bộ — security/auth chi tiết (2 filter chain, URL matrix), DB schema đầy đủ 23 entity, API endpoints hoàn chỉnh, cấu trúc thư mục chính xác, biến môi trường đầy đủ
+- `docs/features.md`: 17 section chi tiết từ code thực tế
+- `docs/work-log.md`: bảng bugs đã sửa, quyết định kỹ thuật, files thay đổi
+- `docs/changelog.md`: file này
 
-**Files thay đổi:**
-- `path/to/file.java`
+**Files:**
+- `README.md`, `docs/features.md`, `docs/work-log.md`, `docs/changelog.md`
+
+---
+
+### [2026-06-02] AI Chatbot: chuyển Ollama → Google Gemini + function calling
+
+**BEFORE:**
+- Chatbot nặng rule-based: regex giá VN, từ điển danh mục/màu, FAQ cứng (10+ pattern)
+- Tầng AI: Ollama local (`OllamaChatClient`) gọi `llama3.2:3b` — phải cài Ollama
+- Không gọi trực tiếp DB để tư vấn sản phẩm thật
+
+**AFTER:**
+- Xóa `OllamaChatClient` + tất cả Ollama config
+- Thêm `GeminiChatClient` — REST client Gemini v1beta, hỗ trợ function calling
+- `AiChatbotService` viết lại AI-first:
+  - System prompt nhồi chính sách NOVA + danh mục đọc động từ `subCategoryRepository`
+  - 3 tools: `search_products`, `get_best_sellers`, `get_product_details`
+  - Vòng lặp MAX_STEPS=4 (functionCall → executeFunction → functionResponse → Gemini)
+  - `thinkingBudget=0` để tắt thinking (tránh cụt token)
+  - Fallback: best-sellers + text khi AI offline/không key
+- Model mặc định: `gemini-2.5-flash` (xác nhận qua ListModels API)
+
+**Files:**
+- `service/AiChatbotService.java` (viết lại)
+- `service/ai/GeminiChatClient.java` (tạo mới)
+- `service/ai/OllamaChatClient.java` (xóa)
+- `config/ChatbotAiProperties.java` (viết lại — bỏ Ollama, thêm Gemini)
+- `resources/application.properties`
+- `controller/api/ChatbotApiController.java` (sửa comment)
 
 **Lý do:**
-Tại sao cần thay đổi.
-```
+Không cần cài LLM local → nhẹ máy; AI tự query DB → tư vấn dựa dữ liệu thật; Gemini 2.5 Flash free tier + tiếng Việt tốt + function calling.
+
+---
+
+### [2026-06-02] Admin: gallery ảnh kéo-thả + unified Try-On save
+
+**BEFORE:**
+- Trang Thêm/Sửa: chỉ có input `<file multiple>`, thứ tự ảnh = thứ tự chọn file, không sắp xếp được
+- Trang Sửa: ảnh cũ dùng checkbox "đánh dấu xóa", ảnh mới ô riêng — không trộn chung
+- Try-On trên Sửa: 2 form riêng ngoài form chính (form enable, form disable) → 3 nút lưu
+- Không có `sort_order` column
+
+**AFTER:**
+- Thêm cột `sort_order` vào `product_images` (tự tạo qua `ddl-auto=update`)
+- Gallery kéo-thả (HTML5 drag events) trên cả 2 trang — giống nhau
+- Ảnh đầu = bìa tự động (`primaryImage=true`, `sortOrder=0`)
+- Nút ✕ trên mỗi thumbnail để xóa ngay
+- Trang Sửa: ảnh cũ + ảnh mới trong 1 gallery; token `E{existingId}`/`N{newIndex}` gửi thứ tự lên server
+- Try-On gộp vào `productEditForm`: toggle on/off JS + ô upload + chọn loại → **1 nút Save**
+- `TryOnService.updateTryOnSettings()` xử lý logic bật/tắt/upload
+
+**Files:**
+- `entity/ProductImage.java` (+sortOrder)
+- `entity/Product.java` (@OrderBy + getImages())
+- `dto/ProductUpdateDTO.java` (+imageOrder, +tryOnEnabled, +garmentImage, +garmentType)
+- `dto/ProductCreateDTO.java` (+tryOnEnabled)
+- `service/ProductService.java` (saveImages baseOrder, applyImageOrder)
+- `service/TryOnService.java` (+updateTryOnSettings)
+- `controller/admin/AdminProductController.java` (inject TryOnService, wire create+update)
+- `templates/admin/products/create.html` (gallery JS + try-on toggle)
+- `templates/admin/products/edit.html` (unified gallery + try-on card, xóa 2 form riêng)
+
+---
+
+### [2026-06-02] Try-On UI: ảnh to hơn + lightbox + fix upload zone
+
+**BEFORE:**
+- Try-On Studio: sidebar 340px, upload zone min-height 200px, preview ảnh người max 180px, kết quả không có min-height
+- Product Detail modal: modal max-width 780px, upload zone min-height 220px, preview max 280px, kết quả max 350px
+- Bấm vào vùng upload không mở file picker (là `<div>`, không phải `<label>`)
+
+**AFTER:**
+- Studio: sidebar 420px · upload zone 320px · preview 420px · kết quả min-height 300px
+- Modal: max-width 1040px · upload zone 380px · preview 480px · kết quả max-height 520px
+- Lightbox toàn màn hình khi bấm ảnh người hoặc ảnh kết quả
+- Fix: `onclick="input.click()"` trên upload div; `stopPropagation()` trên ảnh
+
+**Files:**
+- `templates/shop/tryon-studio.html`
+- `templates/shop/product-detail.html`
+
+---
+
+### [2026-05-30] Flutter mobile app đầy đủ tính năng
+
+**BEFORE:**
+Chỉ có web app. Không có mobile app.
+
+**AFTER:**
+Flutter app `nova_mobile` (iOS/Android):
+- Riverpod 2.6 state management
+- GoRouter 14 navigation
+- Dio 5 + JWT interceptor
+- Màn hình: auth · home · shop · product detail · cart · checkout · orders · wishlist · search · profile · notifications
+
+**Files:**
+- `mobile-app/` (toàn bộ thư mục mới)
+
+---
+
+### [2026-05-29] Virtual Try-On: CatVTON local + outfit compositing
+
+**BEFORE:**
+Try-On chỉ hỗ trợ Replicate IDM-VTON cloud; không có fallback local; không thử outfit.
+
+**AFTER:**
+- Python FastAPI server với 2 tier:
+  1. Replicate IDM-VTON (cloud, khi có token)
+  2. CatVTON local (GPU ≥4GB VRAM, fallback tự động)
+- Outfit try-on: SegFormer parse → 2 mask → 2 lượt CatVTON độc lập → composite
+- `TryOnService.generateOutfitTryOn(personPath, topId, bottomId)`
+- Admin: preprocess garment qua Python (rembg) với fallback lưu raw
+
+**Files:**
+- `python-tryon-server/main.py` (thêm `/tryon/outfit`)
+- `service/TryOnService.java` (generateOutfitTryOn, preprocessAndEnable)
+- `controller/api/TryOnApiController.java` (POST /api/tryon/generate-outfit)
+
+---
+
+### [2026-05-29] Real-time SSE notifications
+
+**BEFORE:**
+Không có thông báo real-time. User phải F5 mới thấy cập nhật.
+
+**AFTER:**
+- `SseService`: pool `SseEmitter` per user (concurrent-safe)
+- `SseNotificationController`: `GET /notifications/stream`
+- Gửi thông báo khi: đặt hàng · cập nhật trạng thái đơn
+- Badge số chưa đọc trên header
+- API: `/api/notifications` · `/count` · `/{id}/read` · `/read-all`
+
+**Files:**
+- `service/SseService.java`, `service/NotificationService.java`
+- `controller/SseNotificationController.java`
+- `controller/api/NotificationApiController.java`
+- `templates/layout/base.html` (SSE JS + badge)
+
+---
+
+### [2026-05-29] Referral system
+
+**BEFORE:**
+Không có hệ thống giới thiệu.
+
+**AFTER:**
+- `User.referralCode` (unique 16 chars, tự generate khi đăng ký)
+- `User.referredById` liên kết người giới thiệu
+- `ReferralService.processReferralReward()`: thưởng cả 2 bên khi đơn đầu COMPLETED
+- Đăng ký API nhận `ref` param
+
+**Files:**
+- `entity/User.java`, `service/ReferralService.java`
+- `controller/api/AuthApiController.java`
+
+---
+
+### [2026-05-29] Review có ảnh đính kèm
+
+**BEFORE:**
+Review chỉ có rating + text.
+
+**AFTER:**
+- `Review.imageUrls` (@ElementCollection → bảng `review_images`)
+- Tối đa 5 ảnh / review
+- Upload ảnh khi submit review
+- Hiển thị ảnh trong trang chi tiết sản phẩm
+
+**Files:**
+- `entity/Review.java`
+- `controller/ReviewController.java`
+- `templates/shop/product-detail.html`
+
+---
+
+### [2026-05-29] Full-text search + autocomplete
+
+**BEFORE:**
+Tìm kiếm chỉ dùng LIKE (`%keyword%`), không gợi ý.
+
+**AFTER:**
+- MySQL FULLTEXT INDEX trên `products(name, description)`
+- `ProductRepository.fullTextSearchIds()`: MATCH AGAINST BOOLEAN MODE
+- `ProductService.fullTextSearch()`: trả kết quả xếp theo relevance; fallback LIKE nếu FULLTEXT lỗi
+- `GET /api/products/suggest?q=` trả ≤8 kết quả
+- Autocomplete dropdown realtime trên header search
+
+**Files:**
+- `repository/ProductRepository.java`
+- `service/ProductService.java`
+- `controller/api/ProductApiController.java`
+- `templates/layout/base.html` (autocomplete JS)
+
+---
+
+### [2026-05-28] Admin dashboard + Excel export
+
+**BEFORE:**
+Không có dashboard phân tích.
+
+**AFTER:**
+- `DashboardService`: KPI (đơn hôm nay, doanh thu, cảnh báo stock ≤10), biểu đồ 7 ngày/4 tuần/12 tháng/5 năm
+- `ReportService`: xuất Excel (.xlsx) dùng Apache POI
+- `AnalyticsApiController`: `/api/analytics/top-products`, `/trending`, `/overview`
+- `AdminApiController`: `/api/admin/stats/summary` (AJAX), bulk-status sản phẩm
+
+**Files:**
+- `service/DashboardService.java`, `service/ReportService.java`
+- `controller/admin/AdminDashboardController.java`
+- `controller/api/AnalyticsApiController.java`, `AdminApiController.java`
+
+---
+
+### [2026-05-27] Checkout + Coupon + Order management
+
+**BEFORE:**
+Không có hệ thống đặt hàng / coupon.
+
+**AFTER:**
+- `CheckoutService.checkout()`: kiểm tra stock, tính ship fee (free ≥500k, 30k dưới ngưỡng), apply coupon, tạo Payment, gửi thông báo
+- Optimistic locking `@Version` trên `Order`
+- 6 `OrderStatus`: PENDING → PROCESSING → SHIPPING → COMPLETED / CANCEL_REQUESTED → CANCELLED
+- Coupon: PERCENTAGE + FIXED, user-specific, `UserCoupon` tracking
+
+**Files:**
+- `service/CheckoutService.java`, `service/OrderService.java`, `service/CouponService.java`
+- `entity/Order.java`, `entity/Coupon.java`, `entity/UserCoupon.java`
+- `controller/api/OrderApiController.java`, `CouponApiController.java`
+
+---
+
+### [2026-05-26] Security: login rate limiting + JWT API chain
+
+**BEFORE:**
+Chỉ có Spring Security form login cơ bản.
+
+**AFTER:**
+- `LoginRateLimitFilter`: 5 lần sai/IP/15 phút (in-memory Guava Cache)
+- `JwtAuthenticationFilter`: parse và validate JWT cho `/api/**`
+- 2 security filter chain: web (form login + session) + api (JWT stateless)
+- Security headers: HSTS, X-Frame-Options, Referrer-Policy
+
+**Files:**
+- `security/LoginRateLimitFilter.java`, `security/JwtAuthenticationFilter.java`, `security/JwtUtil.java`
+- `config/SecurityConfig.java`
 
 ---
 
 ## PLANNED — Việc sẽ làm tiếp
 
-### [TODO-01] Tích hợp thanh toán online (VNPay / MoMo / SePay)
+### [TODO-01] Thanh toán online (VietQR / SePay)
 
-**BEFORE:**
-Hiện tại chỉ hỗ trợ COD (thanh toán khi nhận hàng). Không có cổng thanh toán trực tuyến.
-
-**AFTER (kế hoạch):**
+**Mục tiêu:**
 - Tích hợp SePay.vn (VietQR) hoặc VNPay
-- Thêm trạng thái thanh toán: PENDING_PAYMENT → PAID → ...
-- Webhook xử lý kết quả thanh toán
-- Admin xem lịch sử giao dịch
-
-**Files sẽ thay đổi:**
-- `CheckoutController.java`
-- `CheckoutService.java`
-- `Payment.java`
-- `PaymentService.java`
-- `templates/shop/checkout.html`
-
----
-
-### [TODO-02] Cải thiện UI/UX trang chủ
-
-**BEFORE:**
-Trang chủ chỉ hiển thị best sellers đơn giản (3 sản phẩm). Không có banner, slider hay section nổi bật.
-
-**AFTER (kế hoạch):**
-- Hero banner với slider ảnh
-- Section "Mới nhất" (latest arrivals)
-- Section "Bán chạy" (best sellers) cho từng category
-- Section khuyến mãi / flash sale
-- Cải thiện responsive mobile
-
-**Files sẽ thay đổi:**
-- `templates/shop/home.html`
-- `static/css/tailwind.css`
-- `ShopController.java` (thêm data mới vào model)
-
----
-
-### [TODO-03] Hệ thống đánh giá nâng cao
-
-**BEFORE:**
-Review chỉ có rating + text. Không có ảnh review, không có filter, không có helpful vote.
-
-**AFTER (kế hoạch):**
-- Upload ảnh vào review
-- Filter review theo số sao
-- Nút "Hữu ích" (helpful vote)
-- Hiển thị biểu đồ phân bố rating (1–5 sao)
-
-**Files sẽ thay đổi:**
-- `Review.java`
-- `ReviewService.java`
-- `ReviewController.java`
-- `templates/shop/product-detail.html`
-
----
-
-### [TODO-04] Real-time notification (WebSocket / SSE)
-
-**BEFORE:**
-Notification đang là pull (client gọi API định kỳ). Không có real-time push.
-
-**AFTER (kế hoạch):**
-- Server-Sent Events (SSE) cho notification real-time
-- Admin nhận thông báo ngay khi có đơn mới
-- User nhận thông báo cập nhật trạng thái đơn hàng
-
-**Files sẽ thay đổi:**
-- `NotificationService.java`
-- `NotificationApiController.java`
-- `templates/layout/base.html`
-
----
-
-### [TODO-05] Trang quản trị: thống kê nâng cao
-
-**BEFORE:**
-Dashboard có biểu đồ doanh thu theo ngày/tuần/tháng/năm. Chưa có: thống kê theo sản phẩm chi tiết, theo khu vực, conversion rate.
-
-**AFTER (kế hoạch):**
-- Biểu đồ top 10 sản phẩm bán chạy (bar chart)
-- Biểu đồ phân bố đơn theo tỉnh/thành
-- Tỷ lệ chuyển đổi giỏ hàng → đơn hàng
-- Báo cáo xuất theo khoảng thời gian tùy chọn
-
-**Files sẽ thay đổi:**
-- `DashboardService.java`
-- `DashboardDTO.java`
-- `templates/admin/dashboard.html`
-- `ReportService.java`
-
----
-
-### [TODO-06] Search nâng cao (Elasticsearch / Full-text)
-
-**BEFORE:**
-Tìm kiếm dùng JPA LIKE query (`%keyword%`). Không có full-text search, không có gợi ý từ khóa.
-
-**AFTER (kế hoạch):**
-- Full-text search với MySQL FULLTEXT index
-- Gợi ý từ khóa (autocomplete)
-- Tìm kiếm theo tag / thuộc tính
-- Kết quả được rank theo relevance
-
-**Files sẽ thay đổi:**
-- `ProductSpecification.java`
-- `ProductRepository.java`
-- `ProductService.java`
-- `templates/shop/products.html`
-
----
-
-### [TODO-07] Mobile optimization & PWA
-
-**BEFORE:**
-Site responsive cơ bản. Không có PWA, không có offline mode.
-
-**AFTER (kế hoạch):**
-- Service Worker cho offline mode
-- Tối ưu hình ảnh (WebP, lazy loading)
-- Touch gestures cho slider ảnh sản phẩm
-- Bottom navigation bar trên mobile
-
----
-
-### [TODO-08] Hệ thống mã giới thiệu (Referral)
-
-**BEFORE:**
-Không có hệ thống referral. User không có lý do để giới thiệu bạn bè.
-
-**AFTER (kế hoạch):**
-- Mỗi user có referral code riêng
-- Khi người được giới thiệu đặt đơn đầu tiên: cả 2 nhận coupon
-- Thống kê referral trong profile
-
----
-
-## DONE — Đã thay đổi
-
-### [2026-06-02] Chatbot AI-first: chuyển Ollama → Google Gemini + function calling
-
-**BEFORE:**
-- Chatbot nặng rule-based: regex giá, từ điển từ khóa danh mục/màu, FAQ cứng (`AiChatbotService`).
-- Tầng AI chạy qua **Ollama local** (`OllamaChatClient`, model llama3.2:3b) — phải cài Ollama trên máy mới dùng được AI.
-
-**AFTER:**
-- Bỏ Ollama hoàn toàn (xóa `OllamaChatClient`, gỡ Ollama khỏi máy + cấu hình).
-- Chuyển sang **Google Gemini** (`gemini-2.5-flash`) qua `GeminiChatClient` với **function calling**.
-- AI tự gọi tool truy vấn DB thật: `search_products`, `get_best_sellers`, `get_product_details` → tổng hợp tư vấn kèm thẻ sản phẩm.
-- System prompt nhồi chính sách + danh mục (đọc động từ DB). Gần như bỏ hết rule cứng; chỉ giữ fallback gợi ý bán chạy khi chưa có API key / AI lỗi (429/401...).
-
-**Files thay đổi:**
-- `service/AiChatbotService.java` (viết lại), `service/ai/GeminiChatClient.java` (mới), `service/ai/OllamaChatClient.java` (xóa)
-- `config/ChatbotAiProperties.java`, `resources/application.properties`
-- `controller/api/ChatbotApiController.java`, `README.md`, `docs/features.md`
-
-**Lý do:**
-Giảm rule-base, để AI lo phần lớn; dùng API free (Gemini) không phải cài LLM local cho nhẹ máy; tư vấn bám sát dữ liệu sản phẩm thật qua function calling.
-
-### [2026-05-29] Thêm 5 tính năng lớn: hero slider, full-text search, review ảnh, SSE notification, referral
-
-**BEFORE:**
-- Trang chủ: hero ảnh tĩnh đơn.
-- Tìm kiếm: chỉ LIKE, không gợi ý.
-- Review: chỉ text, không ảnh.
-- Notification: pull (không real-time).
-- Không có hệ thống giới thiệu.
-
-**AFTER:**
-- **F1 Hero slider**: 3 slide tự xoay + dots/arrows + ken-burns (vanilla JS).
-- **F2 Full-text search**: FULLTEXT index (runner tự tạo, idempotent) + MATCH AGAINST với fallback LIKE + autocomplete `/api/products/suggest` + dropdown gợi ý.
-- **F3 Review ảnh**: upload tối đa 5 ảnh/review (validate 5MB, jpg/png/webp), hiển thị gallery.
-- **F4 SSE notification**: `/notifications/stream` (session-auth) đẩy toast real-time; admin nhận "đơn mới" ngay lập tức.
-- **F5 Referral**: mỗi user có mã giới thiệu, đăng ký `?ref=CODE` liên kết người giới thiệu, đơn đầu hoàn tất → cả 2 nhận coupon 50.000₫.
-
-**Đảm bảo clone/pull về chạy ngay:** mọi schema tự apply (ddl-auto), runner tự tạo FULLTEXT index + backfill mã referral cho user cũ. Không cần bước thủ công.
-
-**Chất lượng:** code-review quét toàn bộ → fix 6 lỗi HIGH (trao coupon trùng, TX poisoning, SSE race/toast trùng, đăng ký không nguyên tử, SQL guard). 81 test PASS (8 test referral mới). E2E verified cả 5 tính năng trên app thật (MariaDB).
-
-**Files:** xem bảng chi tiết tại [work-log.md](work-log.md) BẢNG 5 + BẢNG 6.
-
----
-
-### [2026-05-29] Đảm bảo chatbot chạy trên mọi máy (không cần Ollama)
-
-**BEFORE:**
-`ChatbotApiController` có "cổng chặn" đầu method: nếu `isEnabledAndConfigured()` = false thì trả ngay "Chatbot AI is not enabled..." và KHÔNG gọi `processMessage()`. Hậu quả: nếu máy clone về set `CHATBOT_AI_ENABLED=false` (hoặc không có Ollama + tắt AI), chat chỉ trả thông báo "not enabled" — cả FAQ lẫn tìm sản phẩm rule-based đều không dùng được.
-
-**AFTER:**
-- Bỏ cổng chặn. Controller LUÔN gọi `processMessage()`.
-- `processMessage()` vốn đã xử lý theo tầng: rule-based FAQ → rule-based product search → AI (chỉ tầng AI mới cần Ollama, và tự fallback câu chung nếu AI off).
-- Kết quả: **mọi máy chỉ cần clone + chạy app là chat trả lời được** (FAQ + tìm sản phẩm), Ollama chỉ để bật thêm AI trò chuyện tự do.
-- README cập nhật ghi rõ Ollama là TÙY CHỌN.
-- Đã test với `CHATBOT_AI_ENABLED=false`: FAQ đổi trả ✅, tìm hoodie ra 2 SP ✅, bán chạy 6 SP ✅, câu tự do fallback lịch sự ✅.
-
-**Files thay đổi:**
-- `controller/api/ChatbotApiController.java` — bỏ early-return gate
-- `README.md` — ghi rõ chatbot chạy không cần Ollama (mục Yêu cầu + mục 4)
-
-**Lý do:**
-Đảm bảo người chấm/bạn cùng nhóm clone repo về là chat hoạt động ngay, không phụ thuộc Ollama.
-
----
-
-### [2026-05-29] Nâng cấp AI Chatbot (Tier 1) + cài đặt Ollama
-
-**BEFORE:**
-- Chatbot chạy fallback rule-based vì chưa cài Ollama (AI path không hoạt động).
-- Mỗi tin nhắn xử lý độc lập — không nhớ ngữ cảnh, hỏi nối tiếp ("còn màu khác không?") không hiểu.
-- Response hiện toàn bộ một lúc (`stream=false`), cảm giác chậm.
-- Không có gợi ý câu hỏi cho người dùng.
-
-**AFTER:**
-- Đã cài **Ollama + model llama3.2:3b** (chạy cổng 11434) → AI path hoạt động đầy đủ, trả lời tiếng Việt.
-- **Ngữ cảnh hội thoại đa lượt**: lưu 6 lượt gần nhất trong `HttpSession` (spring-session-jdbc), truyền vào LLM ở cả `planAction` và `answerGeneral`. Hỏi nối tiếp đã hiểu ngữ cảnh.
-- **Typewriter effect**: chữ bot hiện dần từng ký tự (cảm giác như ChatGPT), kèm caret nhấp nháy.
-- **Quick-reply chips**: 5 nút gợi ý sẵn (Bán chạy / Tư vấn size / Đổi trả / Vận chuyển / Hoodie dưới 500k), tự ẩn sau tin đầu.
-- Đã test: AI search ✅, follow-up giữ ngữ cảnh ✅, FAQ rule-based ✅, tư vấn size ✅.
-
-**Files thay đổi:**
-- `service/AiChatbotService.java` — overload `processMessage(msg, history)`, `appendHistory()`, truyền history vào `planAction`/`answerGeneral`
-- `controller/api/ChatbotApiController.java` — quản lý lịch sử hội thoại trong session (cap 12 entries)
-- `templates/layout/base.html` — typewriter effect, quick-reply chips, CSS `.chat-chip`/`.chat-caret`
-
-**Lý do:**
-Nâng trải nghiệm chatbot lên mức "demo ấn tượng" cho hội đồng mà vẫn giữ KISS — typewriter là client-side (không thêm rủi ro backend SSE), memory dùng session sẵn có.
-
----
-
-### [2026-05-29] Khởi tạo file changelog
-
-**BEFORE:**
-Chưa có hệ thống theo dõi thay đổi.
-
-**AFTER:**
-Tạo `docs/changelog.md` để track before/after mọi thay đổi.
-
-**Files thay đổi:**
-- `docs/changelog.md` (file này)
-
----
-
-### [2026-05-29] Thêm .claudee vào .gitignore
-
-**BEFORE:**
-`.claudee/` (thư mục chứa Claude Code templates, agents, hooks) chưa có trong `.gitignore`, có thể bị commit lên git.
-
-**AFTER:**
-Đã thêm vào `.gitignore`:
-```
-### Claude Kit (local AI assistant config) ###
-.claudee/
-```
-
-**Files thay đổi:**
-- `.gitignore`
-
----
-
-### [2026-05-29] Cài đặt Claude Code slash commands từ .claudee
-
-**BEFORE:**
-Các commands `/brainstorm`, `/plan`, `/debug`, `/fix`, `/code-review`... chưa khả dụng trong project.
-
-**AFTER:**
-Copy toàn bộ từ `.claudee/commands/` → `.claude/commands/` (54 commands) và `.claudee/agents/` → `.claude/agents/` (16 subagents).
-
-Slash commands khả dụng ngay:
-- `/brainstorm` — Brainstorm tính năng / kiến trúc
-- `/plan` — Lập kế hoạch implement
-- `/cook` — Implement từng bước
-- `/fix` — Fix bug tự động
-- `/debug` — Debug có hệ thống
-- `/code-review` — Review code
-- `/test` — Chạy test
-- `/backend-development` — Hỗ trợ Java/Spring
-- `/databases` — Hỗ trợ SQL/JPA
-- `/research` — Tìm tài liệu
-- `/scout` — Khám phá codebase
-
-**Files thay đổi:**
-- `.claude/commands/` (54 files mới)
-- `.claude/agents/` (16 files mới)
+- Thêm trạng thái `PENDING_PAYMENT` → `PAID`
+- Webhook nhận xác nhận thanh toán
+- Lưu payment reference vào `Payment` entity
+
+### [TODO-02] Push notifications (Firebase FCM)
+
+**Mục tiêu:**
+- Thêm FCM token vào `User` entity
+- Gửi push notification song song với SSE
+- Flutter: `firebase_messaging` package
+
+### [TODO-03] Tối ưu hoá production
+
+**Mục tiêu:**
+- Đổi `ddl-auto=validate` thay `update`
+- Flyway/Liquibase cho database migration
+- Redis thay Caffeine cache (distributed)
+- HTTPS + reverse proxy (Nginx)

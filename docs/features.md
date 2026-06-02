@@ -1,397 +1,373 @@
-# Danh sách tính năng đã hoàn thành — ClothingStore
+# Tính năng hệ thống — ClothingStore (NOVA)
 
-> Tài liệu nội bộ nhóm. Liệt kê tất cả những gì đã xây dựng tính đến ngày **2026-05-31**.
-
----
-
-## Stack kỹ thuật
-
-| Lớp | Công nghệ |
-|-----|-----------|
-| Backend | Spring Boot 3.5, Spring Security, Spring Data JPA, Spring Session JDBC |
-| Frontend (Web) | Thymeleaf, Tailwind CSS 3, Vanilla JS |
-| Mobile | Flutter, Dart 3.11+, Riverpod 2.6, GoRouter 14, Dio 5 |
-| DB | MySQL 8 (FULLTEXT INDEX cho tìm kiếm) |
-| Cache | Caffeine (in-memory) |
-| Email | Gmail SMTP (async) |
-| Auth | BCrypt + Session JDBC (web) · JWT HS256 (API / mobile) |
-| AI Chatbot | Google Gemini (gemini-2.5-flash) + function calling + truy vấn DB |
-| Virtual Try-On | Python FastAPI bridge → Replicate IDM-VTON (cloud) → CatVTON local (GPU) · SegFormer mask |
-| Real-time | Server-Sent Events (SSE) |
-| File upload | Local disk `uploads/` · max 20 MB |
-| Export | Apache POI (Excel .xlsx) |
-| API docs | Springdoc OpenAPI / Swagger UI |
-| Monitoring | Spring Boot Actuator (health · info · metrics) |
+> Tài liệu này mô tả chi tiết tất cả tính năng của nền tảng dựa trên code thực tế.  
+> Cập nhật lần cuối: 2026-06-02
 
 ---
 
-## 1. KHÁCH HÀNG (Customer-facing)
+## Tóm tắt nhanh
 
-### 1.1 Trang chủ (`/`)
-- Hero banner slider 3 slide, tự xoay, điều hướng tay
-- Best sellers: sản phẩm bán chạy nhất mỗi category (top / bottom / accessories)
-- Điều hướng đến trang sản phẩm, danh mục, liên hệ, đổi trả, bảng size
-
-### 1.2 Danh sách sản phẩm (`/products`)
-- Hiển thị tất cả sản phẩm, phân trang 12 SP/trang
-- Lọc theo: khoảng giá, từ khóa tìm kiếm, danh mục, màu sắc
-- Sắp xếp: mới nhất · giá tăng · giá giảm · bán chạy
-- Phân trang với "window" ±2 trang (tối đa 7 nút)
-- Duyệt theo Category (`/products/{categorySlug}`)
-- Duyệt theo SubCategory (`/products/{categorySlug}/{subSlug}`)
-- **Full-text Search**: MySQL `MATCH AGAINST` với FULLTEXT INDEX (tên, mô tả, danh mục)
-- **Autocomplete**: `/api/products/suggest?q=` gợi ý kết quả realtime khi gõ
-
-### 1.3 Chi tiết sản phẩm (`/product/{slug}`)
-- Ảnh sản phẩm (nhiều ảnh, gallery)
-- Chọn size + màu sắc (variant selector, JS-driven)
-- Giá hiển thị theo variant được chọn
-- Stock real-time theo variant
-- Đánh giá trung bình + số lượt review (1 query, tính in-memory)
-- Danh sách reviews + rating + ảnh đính kèm của từng người
-- Sản phẩm liên quan (4 SP, EntityGraph pre-fetch ảnh)
-- Nút Yêu thích (wishlist toggle, chỉ khi đã đăng nhập)
-- Nút Thêm vào giỏ hàng
-- Nút Thử đồ ảo (nếu sản phẩm hỗ trợ try-on)
-
-### 1.4 Giỏ hàng (`/cart`)
-- Thêm / bớt số lượng
-- Xóa sản phẩm
-- Hiển thị subtotal
-- Hoạt động cả khi chưa đăng nhập (session-based)
-
-### 1.5 Thanh toán (`/checkout`)
-- Nhập họ tên, số điện thoại VN (validation regex), địa chỉ giao hàng
-- Phí ship: miễn phí nếu đơn ≥ 500.000 VNĐ · 30.000 VNĐ nếu dưới ngưỡng
-- Chọn mã giảm giá (coupon) từ danh sách khả dụng
-- Nhập ghi chú đơn hàng
-- Hỗ trợ cả khách (guest) và người dùng đã đăng nhập
-- Trang xác nhận (`/checkout/success`) sau đặt hàng thành công
-
-### 1.6 Quản lý đơn hàng của tôi (`/my-orders`)
-- Danh sách đơn theo thời gian
-- Chi tiết đơn hàng: sản phẩm, số lượng, giá, trạng thái, thông tin giao hàng
-- Yêu cầu hủy đơn (CANCEL_REQUESTED)
-
-### 1.7 Wishlist (`/wishlist`)
-- Thêm / xóa sản phẩm yêu thích
-- Xem toàn bộ danh sách yêu thích
-- Chuyển từ wishlist sang giỏ hàng
-
-### 1.8 Mã giảm giá (`/my-coupons`)
-- Xem danh sách coupon hiện có của tài khoản
-- Coupon có thể: % giảm · giảm tiền cố định · ngưỡng đơn tối thiểu · số lần dùng tối đa
-
-### 1.9 Đánh giá sản phẩm
-- Viết review sau khi mua hàng (rating 1–5 sao + nội dung)
-- **Upload tối đa 5 ảnh/review** (jpg/png/webp, validate magic bytes)
-- Chỉ 1 review/sản phẩm/người dùng
-- Hiển thị ảnh review trên trang chi tiết sản phẩm
-
-### 1.10 Hồ sơ cá nhân (`/profile`)
-- Xem và cập nhật thông tin cá nhân (tên, SĐT)
-- Đổi mật khẩu
-- **Quản lý nhiều địa chỉ**: thêm / sửa / xóa địa chỉ giao hàng
-
-### 1.11 Thông báo real-time (`/notifications/stream`)
-- **SSE (Server-Sent Events)**: không cần WebSocket, hoạt động mọi browser
-- Nhận thông báo tức thì: xác nhận đặt hàng, cập nhật trạng thái, đơn đã giao
-- Xem lịch sử thông báo (`/api/notifications`)
-- Tự động reconnect khi mất kết nối
-
-### 1.12 Hệ thống mã giới thiệu (Referral)
-- Mỗi tài khoản có mã giới thiệu riêng
-- Người mới đăng ký với mã giới thiệu → được gắn người giới thiệu
-- Khi đơn hàng đầu tiên của người được giới thiệu hoàn tất (DELIVERED):
-  - Người giới thiệu nhận coupon cảm ơn
-  - Người được giới thiệu nhận coupon chào mừng
-- Sự kiện xử lý bất đồng bộ qua `UserRegisteredEvent`
-
-### 1.13 Thử đồ ảo — Try-On Studio (`/tryon-studio`)
-- Upload ảnh người (full-body, max 5MB, jpg/png/webp)
-- **Single garment**: thử 1 sản phẩm, chọn từ danh sách
-- **Full outfit**: thử đồng thời áo (UPPER_BODY) + quần (LOWER_BODY)
-- Garment types: `UPPER_BODY` · `LOWER_BODY`
-- **Full outfit** chạy CatVTON 2 lượt trên ảnh gốc rồi composite (không chain tuần tự)
-- Ảnh kết quả tự xóa sau 5 phút (cleanup scheduler)
-- Health check `/api/tryon/health` kiểm tra Python server
-- Backend: Replicate IDM-VTON (cloud) → fallback CatVTON local trên GPU (mask bằng SegFormer human-parsing)
-
-### 1.14 AI Chatbot
-- Hộp chat nổi trên toàn site (web)
-- **AI-first (Google Gemini)**: dùng model `gemini-2.5-flash` với **function calling**
-- System prompt nhồi chính sách cửa hàng + danh mục (đọc động từ DB)
-- AI tự quyết định gọi tool truy vấn DB thật: `search_products` (loại/màu/giá), `get_best_sellers`, `get_product_details` (size/màu/tồn kho) → tổng hợp tư vấn kèm thẻ sản phẩm
-- Gần như không còn rule cứng (chỉ giữ fallback khi AI lỗi/offline)
-- Lịch sử hội thoại: tối đa 12 lượt (session-based)
-- Cooldown 5 phút · timeout 15 giây khi API lỗi
-- Luôn trả lời — fallback gợi ý sản phẩm bán chạy khi chưa có API key / AI lỗi
-
-### 1.15 Các trang tĩnh
-- `/contact` — Liên hệ
-- `/returns` — Chính sách đổi trả
-- `/sizing` — Bảng kích cỡ
+| Module | Tính năng nổi bật |
+|--------|------------------|
+| Auth | Đăng ký/đăng nhập web + API · JWT · reset mật khẩu email · rate limiting 5/IP/15min |
+| Sản phẩm | CRUD · variants (size/màu/giá/stock) · gallery ảnh kéo-thả sort_order · full-text search |
+| Đơn hàng | COD · ship free ≥500k · coupon · tự hủy / yêu cầu hủy · 6 trạng thái |
+| Coupon | PERCENTAGE/FIXED · thời hạn · ngưỡng đơn · user-specific · referral reward |
+| Referral | Mã riêng 16 ký tự · thưởng cả 2 bên khi đơn đầu COMPLETED |
+| Virtual Try-On | Studio riêng + modal trang SP · thử đơn / outfit (áo+quần) · lightbox |
+| AI Chatbot | Gemini 2.5 Flash · function calling · truy vấn DB thật · tiếng Việt |
+| Notifications | SSE real-time · badge số chưa đọc · đánh dấu đọc |
+| Admin | Dashboard biểu đồ · KPI · xuất Excel · bulk-status sản phẩm |
+| Mobile | Flutter iOS/Android · Riverpod · JWT · đầy đủ tính năng shop |
 
 ---
 
-## 2. XÁC THỰC (Auth)
+## 1. Xác thực & Phân quyền
 
-| Tính năng | Trạng thái |
-|-----------|-----------|
-| Đăng ký tài khoản (có hỗ trợ referral code) | ✅ |
-| Đăng nhập form (Spring Security) | ✅ |
-| Quên mật khẩu (gửi email token) | ✅ |
-| Đặt lại mật khẩu qua link (token 1-time, 24h) | ✅ |
-| BCrypt password hashing (10 rounds) | ✅ |
-| Login rate limiting — tối đa 5 lần/IP/15 phút | ✅ |
-| JWT cho API (HS256, 24h) | ✅ |
-| Role: USER / ADMIN | ✅ |
-| Redirect sau đăng nhập theo role | ✅ |
+### 1.1 Hai role
+- `USER` — khách hàng thông thường
+- `ADMIN` — quản trị viên (có thể gán từ trang admin)
 
----
+### 1.2 Hai cơ chế auth song song
+- **Web** (chain 2): Form login → Spring Session JDBC · CSRF bật · logout xóa cookie JSESSIONID
+- **API** (chain 1): `Authorization: Bearer <JWT HS256>` · CSRF tắt · stateless · CORS bật
 
-## 3. ADMIN
+### 1.3 Đăng ký
+- `POST /api/auth/register` — tạo user mới với role `USER`
+- Có thể truyền `ref=<referralCode>` để liên kết referral
+- Trả JWT ngay sau đăng ký
 
-### 3.1 Dashboard (`/admin`)
-- **KPIs**: Tổng đơn · Đơn hôm nay · Đang xử lý · Đang giao · Hoàn thành · Đã hủy
-- **Doanh thu**: Hôm nay · Tuần này · Tháng này · Năm nay · Trung bình/đơn
-- **Biểu đồ doanh thu**: theo ngày · tuần · tháng · năm (Chart.js)
-- **Cảnh báo tồn kho thấp** (low stock alert theo ngưỡng)
-- **Top sản phẩm bán chạy**
-- **Đơn hàng gần đây**
-- **Xuất báo cáo Excel** (Apache POI — tổng hợp đơn hàng, doanh thu)
-- **Thông báo real-time**: nhận SSE khi có đơn mới, yêu cầu hủy
+### 1.4 Đăng nhập
+- **Web**: form `/login` → `CustomAuthenticationSuccessHandler` redirect theo role
+- **API**: `POST /api/auth/login` → JWT (`{ token, email, role }`)
 
-### 3.2 Quản lý sản phẩm (`/admin/products`)
-- CRUD sản phẩm đầy đủ
-- Upload nhiều ảnh (max 20 MB/file, validate magic bytes)
-- Quản lý variants (size, màu, giá, tồn kho)
-- Bật/tắt tính năng Virtual Try-On per sản phẩm
-- Gán GarmentType (UPPER_BODY / LOWER_BODY)
-- Tìm kiếm, lọc, phân trang
+### 1.5 Quên/đặt lại mật khẩu
+- `POST /api/auth/forgot-password` → tạo `PasswordResetToken` (bảng `password_reset_tokens`) → gửi link email async
+- Luôn trả 200 (không leak email có/không tồn tại)
+- `POST /api/auth/reset-password` → validate token + expiry → đặt mật khẩu mới
 
-### 3.3 Quản lý danh mục (`/admin/categories`, `/admin/subcategories`)
-- CRUD Category + SubCategory
-- Slug URL auto-generate
+### 1.6 Rate limiting
+- `LoginRateLimitFilter`: tối đa **5 lần sai / IP / 15 phút**
+- Chạy trước JWT filter (từ chối sớm, tiết kiệm tài nguyên)
 
-### 3.4 Quản lý đơn hàng (`/admin/orders`)
-- Danh sách tất cả đơn, lọc theo trạng thái
-- Chi tiết đơn hàng (sản phẩm, thông tin khách, giao hàng)
-- Cập nhật trạng thái: PENDING → CONFIRMED → SHIPPED → DELIVERED / CANCELLED
-- Duyệt / từ chối yêu cầu hủy của khách
-
-### 3.5 Quản lý người dùng (`/admin/users`)
-- Danh sách người dùng
-- Tạo · sửa · khóa / mở khóa tài khoản
-- Gán / thu hồi role ADMIN
-
-### 3.6 Quản lý mã giảm giá (`/admin/coupons`)
-- CRUD coupon (% giảm · tiền cố định)
-- Thiết lập: thời hạn · ngưỡng đơn tối thiểu · số lần dùng tối đa
-- Phát coupon thủ công cho người dùng
-- Coupon tự động phát qua hệ thống referral
+### 1.7 Security headers
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `HSTS: max-age=31536000; includeSubDomains`
+- `Referrer-Policy: strict-origin-when-cross-origin` (web chain)
 
 ---
 
-## 4. FLUTTER MOBILE APP
+## 2. Sản phẩm
 
-> iOS / Android · Riverpod 2.6 · GoRouter · Dio + JWT · Flutter 3.11+
+### 2.1 Cấu trúc
+- `Product` → `SubCategory` → `Category` (2 cấp)
+- Mỗi sản phẩm có nhiều `ProductVariant` (size + màu + giá + stock + sold)
+- `minPrice` và `totalSold` denormalized trên Product để sort nhanh bằng DB
 
-### 4.1 Màn hình chính
-- **Home**: hero slider, danh sách sản phẩm bán chạy, điều hướng danh mục
-- **Shop**: danh sách sản phẩm, lọc, tìm kiếm
-- **Product Detail**: ảnh, variant selector, reviews, nút thêm giỏ / wishlist
-- **Cart**: xem, cập nhật số lượng, xóa sản phẩm
-- **Checkout**: nhập thông tin giao hàng, chọn coupon, đặt hàng
-- **Checkout Success**: xác nhận đặt hàng thành công
+### 2.2 Danh sách & lọc
+- `GET /api/products` — phân trang (max 50/page) + lọc:
+  - Từ khóa (`keyword`)
+  - Danh mục (`categoryId` / `subCategoryId`)
+  - Khoảng giá (`minPrice` / `maxPrice`)
+  - Sắp xếp: `newest` (id DESC) · `oldest` · `name_asc/desc` · `price_asc/desc`
 
-### 4.2 Tài khoản
-- **Login / Register / Forgot Password / Reset Password**
-- **My Orders**: danh sách + chi tiết đơn hàng
-- **Wishlist**: danh sách yêu thích
-- **My Coupons**: coupon của tôi
-- **Profile**: cập nhật thông tin cá nhân
-- **Notifications**: lịch sử thông báo
+### 2.3 Full-text search
+- MySQL FULLTEXT INDEX trên cột `name` + `description` của bảng `products`
+- `GET /api/products/suggest?q=<term>` — trả tối đa 8 kết quả, xếp theo relevance (MATCH AGAINST BOOLEAN MODE)
+- Fallback LIKE qua JPA Specification nếu FULLTEXT không khả dụng (H2 test, MariaDB)
 
-### 4.3 Kỹ thuật mobile
-- **State management**: Riverpod (Provider pattern, code-gen)
-- **Navigation**: GoRouter (deep link, named routes)
-- **HTTP**: Dio + cookie_jar + dio_cookie_manager (session persistence)
-- **Storage**: `flutter_secure_storage` (JWT) · `shared_preferences` (settings)
-- **Image**: `cached_network_image` + shimmer loading
-- **UI**: Google Fonts, smooth_page_indicator, gap
-- **Format**: `intl` (tiền tệ VNĐ, ngày giờ)
+### 2.4 Ảnh sản phẩm (ProductImage)
+- `imageUrl` — đường dẫn lưu trong `uploads/products/`
+- `primaryImage` — ảnh bìa (hiển thị đầu tiên)
+- `sortOrder` — thứ tự hiển thị trong gallery (tăng dần)
+- Sort DB: `@OrderBy("sortOrder ASC, primaryImage DESC, id ASC")`
+- Admin gallery: kéo-thả sắp xếp · ảnh đầu = bìa (nhãn COVER) · nút ✕ xóa từng ảnh
 
----
+### 2.5 Variants
+- Mỗi variant: `size`, `color`, `price` (BigDecimal), `stock`, `sold`, `sku` (unique), `weight`
+- Tạo/sửa/xóa variant ngay trên form sản phẩm (không cần trang riêng)
 
-## 5. REST API
-
-| Endpoint | Mô tả | Auth |
-|----------|-------|------|
-| `POST /api/auth/register` | Đăng ký (có referral code) | Public |
-| `POST /api/auth/login` | Đăng nhập → JWT | Public |
-| `POST /api/auth/forgot-password` | Gửi link reset | Public |
-| `POST /api/auth/reset-password` | Đặt lại mật khẩu | Public |
-| `GET /api/products` | Danh sách SP (phân trang, lọc) | Public |
-| `GET /api/products/{id}` | Chi tiết SP | Public |
-| `GET /api/products/suggest?q=` | Autocomplete full-text | Public |
-| `GET /api/products/{id}/similar` | SP tương tự | Public |
-| `GET /api/categories` | Danh mục (có subcategory) | Public |
-| `GET /api/subcategories` | Subcategory | Public |
-| `GET /api/cart` | Xem giỏ hàng | Public |
-| `POST /api/cart/add` | Thêm vào giỏ | Public |
-| `POST /api/orders/checkout` | Đặt hàng | Public |
-| `GET /api/orders/my` | Đơn hàng của tôi | USER |
-| `POST /api/orders/{id}/cancel` | Hủy đơn | USER |
-| `POST /api/orders/{id}/cancel-request` | Yêu cầu hủy đơn | USER |
-| `GET /api/wishlist` | Danh sách wishlist | USER |
-| `POST /api/wishlist/{id}` | Thêm vào wishlist | USER |
-| `DELETE /api/wishlist/{id}` | Xóa khỏi wishlist | USER |
-| `GET /api/coupons` | Tất cả coupon | Public |
-| `GET /api/coupons/my` | Coupon của tôi | USER |
-| `POST /api/coupons/validate` | Kiểm tra coupon | Public |
-| `GET /api/profile` | Thông tin cá nhân | USER |
-| `PUT /api/profile` | Cập nhật hồ sơ | USER |
-| `POST /api/profile/change-password` | Đổi mật khẩu | USER |
-| `POST /api/chatbot` | Chat AI | Public |
-| `GET /notifications/stream` | SSE real-time | USER |
-| `GET /api/notifications` | Lịch sử thông báo | USER |
-| `POST /api/tryon/upload-person` | Upload ảnh người | Public |
-| `POST /api/tryon/generate` | Thử 1 sản phẩm | Public |
-| `POST /api/tryon/generate-outfit` | Thử full outfit | Public |
-| `GET /api/tryon/health` | Kiểm tra Python server | Public |
-| `GET /api/analytics/**` | Thống kê doanh thu | ADMIN |
-| `GET /api/admin/orders` | Tất cả đơn hàng | ADMIN |
-| `POST /api/admin/orders/{id}/status` | Cập nhật trạng thái | ADMIN |
-| `GET /api/admin/users` | Quản lý người dùng | ADMIN |
-| `POST /api/admin/dashboard/export-excel` | Xuất Excel | ADMIN |
-
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+### 2.6 Sản phẩm tương tự
+- `GET /api/products/{id}/similar?limit=6` — `RecommendationService` truy vấn theo subcategory
 
 ---
 
-## 6. KỸ THUẬT / NON-FUNCTIONAL
+## 3. Giỏ hàng
 
-| Hạng mục | Chi tiết |
-|----------|---------|
-| **Security headers** | X-Frame-Options DENY · HSTS 1 năm · Content-Type-Options · Referrer-Policy |
-| **CORS** | Cấu hình riêng cho API chain (cho phép mobile app) |
-| **Session** | JDBC-backed (MySQL), timeout 24h |
-| **Cache** | Caffeine cho categories, products phổ biến |
-| **Async** | Thread pool 4–8 cho email, notification, SSE |
-| **Graceful shutdown** | 30s timeout per phase |
-| **Login rate limit** | Tối đa 5 lần/IP/15 phút |
-| **File security** | Magic byte validation (jpg/png/webp), path traversal check |
-| **CSRF** | Bật web chain · tắt API chain (stateless JWT) |
-| **Input validation** | Jakarta Bean Validation + custom phone regex |
-| **Exception handling** | GlobalExceptionHandler + ApiExceptionHandler |
-| **Audit log** | Ghi log các thay đổi quan trọng |
-| **Stock log** | Lịch sử thay đổi tồn kho |
-| **SSE** | Server-Sent Events real-time (không cần WebSocket) |
-| **Referral events** | Async `UserRegisteredEvent` + `OrderDeliveredEvent` |
-| **Full-text search** | MySQL FULLTEXT INDEX trên name/description/category |
-| **Request tracing** | X-Request-ID header trên mọi request |
-| **Swagger UI** | `/swagger-ui.html` |
-| **Actuator** | `/actuator/health` public · `/actuator/**` chỉ ADMIN |
+- Session-based (không cần đăng nhập)
+- `CartService` lưu trong `HttpSession`
+- `GET /api/cart` — `{ items, total, itemCount }`
+- `POST /api/cart/add` — thêm (variantId, quantity)
+- `PUT /api/cart/update` — sửa số lượng
+- `DELETE /api/cart/{variantId}` — xóa 1 item
+- `DELETE /api/cart` — xóa toàn bộ
 
 ---
 
-## 7. ENTITIES (Database — 19 bảng @Entity + enums)
+## 4. Thanh toán & Đặt hàng
 
-| Entity | Ghi chú |
-|--------|---------|
-| User | email · password · role · active · referralCode · referredBy |
-| Role | ROLE_USER · ROLE_ADMIN |
-| Address | entity địa chỉ (User dùng 1 field `address` mặc định) |
-| Product | slug · totalSold · tryOnEnabled · garmentType |
-| ProductImage | nhiều ảnh/SP |
-| ProductVariant | size · color · price · stock · totalSold |
-| Category | slug |
-| SubCategory | slug · parent Category |
-| GarmentType *(enum)* | UPPER_BODY · LOWER_BODY |
-| SizeType | bảng size |
-| Order | customerName · phone · address · status · coupon · notes |
-| OrderItem | SP + variant + qty + giá tại thời điểm đặt |
-| OrderStatus | PENDING → CONFIRMED → SHIPPED → DELIVERED / CANCELLED |
-| Payment | liên kết với Order (COD) |
-| Shipment | thông tin vận chuyển, tracking |
-| Coupon | code · type · value · minOrder · maxUses · expiry |
-| UserCoupon | mapping User–Coupon + usedCount + usedAt |
-| Review | rating · content · product · user · images |
-| WishlistItem | user · product |
-| Notification | user · message · read · type |
-| AuditLog | bảng audit thay đổi hệ thống |
-| StockLog | lịch sử thay đổi tồn kho |
-| PasswordResetToken | token · expiry · used |
+### 4.1 Checkout
+- `POST /api/orders/checkout` — public (hỗ trợ guest + đã đăng nhập)
+- Kiểm tra tồn kho thực (lock variant row, throw `OutOfStockException` nếu hết)
+- `FREE_SHIP_THRESHOLD = 500,000₫` → ship free; dưới ngưỡng: `SHIP_FEE = 30,000₫`
+- Validate và apply coupon nếu truyền `couponCode`
+- Tạo `Payment` record, gửi thông báo SSE real-time cho user + admin
+- Xóa giỏ hàng sau khi đặt thành công
+
+### 4.2 Trạng thái đơn hàng
+```
+PENDING → PROCESSING → SHIPPING → COMPLETED
+                ↓
+         CANCEL_REQUESTED → CANCELLED
+    ↑
+   (user tự hủy khi PENDING)
+```
+| Trạng thái | Ý nghĩa |
+|-----------|---------|
+| `PENDING` | Vừa đặt, chờ xử lý |
+| `PROCESSING` | Admin đang chuẩn bị |
+| `CANCEL_REQUESTED` | User yêu cầu hủy khi đang PROCESSING |
+| `SHIPPING` | Đang giao |
+| `COMPLETED` | Đã giao thành công |
+| `CANCELLED` | Đã hủy |
+
+- User tự hủy: `POST /api/orders/{id}/cancel` — chỉ khi `PENDING`
+- User yêu cầu hủy: `POST /api/orders/{id}/cancel-request?reason=` — khi `PROCESSING`
+- Admin cập nhật: `POST /api/admin/orders/{id}/status` (AJAX) hoặc trang web
+
+### 4.3 Optimistic locking
+- `@Version Long version` trên `Order` → ngăn race condition khi nhiều admin cập nhật cùng lúc
 
 ---
 
-## 8. VIRTUAL TRY-ON — Kiến trúc Python Server
+## 5. Đánh giá (Review)
+
+- Chỉ đánh giá được sau khi đơn hàng `COMPLETED` (liên kết với `OrderItem`)
+- UniqueConstraint trên `order_item_id` → **1 review / order item**
+- Rating: 1–5 sao (double) · comment: ≤1000 ký tự
+- Ảnh đính kèm: tối đa 5 URL lưu trong bảng `review_images` (@ElementCollection)
+- Hiển thị trên trang chi tiết sản phẩm
+
+---
+
+## 6. Coupon
+
+### 6.1 Loại coupon
+- `PERCENTAGE` — giảm % (0–100)
+- `FIXED` — giảm tiền cố định
+
+### 6.2 Điều kiện áp dụng
+- `active = true`
+- `startDate ≤ now ≤ expiryDate` (nếu đặt)
+- `usageCount < usageLimit` (nếu đặt)
+- `orderTotal ≥ minOrderAmount` (nếu đặt)
+
+### 6.3 User-specific coupon
+- `userSpecific = true` → chỉ user có bản ghi `UserCoupon` mới xem/dùng được
+- Dùng cho coupon referral reward
+
+### 6.4 API
+- `POST /api/coupons/validate` — kiểm tra (không tăng `usageCount`)
+- `GET /api/coupons/my` — xem coupon của mình (general + user-specific)
+
+---
+
+## 7. Wishlist
+
+- `WishlistItem` liên kết User ↔ Product
+- `GET /api/wishlist` · `POST /api/wishlist/{productId}` · `DELETE /api/wishlist/{productId}`
+- Yêu cầu xác thực
+
+---
+
+## 8. Referral System
 
 ```
-Python FastAPI (port 8081)
-         │
-    ┌────┴─────┐
-    ▼          ▼ (hết quota / không token)
-Replicate    CatVTON local (GPU, fp16, 768×1024)
-IDM-VTON     ├─ SegFormer parse → agnostic mask
-(cloud)      └─ UniPC @ 20 steps · outfit = 2 lượt + composite
+User A có referralCode (16 ký tự unique, tạo khi đăng ký)
+  │
+  └─ User B đăng ký với ?ref=<code> → user_b.referredById = user_a.id
+        │
+        └─ User B đặt đơn đầu tiên → đơn COMPLETED
+              │
+              └─ ReferralService.processReferralReward()
+                    ├─ Tạo UserCoupon cho User A
+                    ├─ Tạo UserCoupon cho User B
+                    └─ User A.referralRewarded = true  (chỉ thưởng 1 lần)
 ```
-
-| Backend | Điều kiện | Ghi chú |
-|---------|-----------|---------|
-| Replicate IDM-VTON | Có `REPLICATE_API_TOKEN` + còn quota | `cuuupid/idm-vton`, cloud, nhanh |
-| CatVTON local | Không token / cloud hết quota (402/429) | `zhengchong/CatVTON`, GPU ≥ 4GB, weights ~4GB |
-| Mock mode | `MOCK_INFERENCE=true` | Ảnh giả, dùng cho phát triển |
-
-**Masking**: SegFormer (`mattmdjaga/segformer_b2_clothes`, ATR 18-class) tạo cloth-agnostic mask,
-bảo vệ mặt/tóc/tay/trang-phục-còn-lại (thay AutoMasker DensePose+SCHP vì detectron2 không build trên Windows).
-**Tinh chỉnh (env)**: `TRYON_STEPS` · `TRYON_SCHEDULER` · `TRYON_PARSER_DEVICE` · `TRYON_CFG`.
-**Preprocessing**: `rembg` xóa nền ảnh garment · normalize về 768×1024
-**Auto-cleanup**: kết quả tự xóa sau 5 phút
 
 ---
 
-## 9. CẤU TRÚC THƯ MỤC
+## 9. Notifications & SSE
 
-```
-src/main/java/com/shop/clothingstore/
-├── config/          SecurityConfig · CacheConfig · CORS · AsyncConfig · DataInitializer
-├── controller/
-│   ├── (web)        Auth · Cart · Checkout · Order · Profile · Shop · TryOn · Wishlist · Coupon
-│   ├── admin/       Dashboard · Product · Category · SubCategory · Order · User · Coupon
-│   └── api/         Auth · Cart · Chatbot · Coupon · Notification · Order · Product
-│                    Analytics · TryOn · Wishlist · Profile · Address
-├── dto/             Form DTOs · API request/response
-├── entity/          JPA entities + base classes
-├── event/           UserRegisteredEvent · OrderDeliveredEvent
-├── exception/       AppException · OutOfStock · ResourceNotFound · GlobalExceptionHandler
-├── repository/      Spring Data JPA repos + JPA Specifications (filtering)
-├── security/        JwtAuthenticationFilter · LoginRateLimitFilter · RequestIdFilter
-└── service/         Business logic · AiChatbotService · TryOnService · SseService
-                     EmailService · FileStorageService · ReferralService · ReportService
+### 9.1 SSE stream
+- `GET /notifications/stream` — `SseService` duy trì pool `SseEmitter` per user
+- Event type: `notification` · payload JSON
+- Tự reconnect khi mất kết nối
 
-src/main/resources/
-├── application.properties
-├── logback-spring.xml
-├── templates/
-│   ├── layout/      base.html · admin.html
-│   ├── auth/        login · register · forgot-password · reset-password
-│   ├── admin/       dashboard · products · categories · subcategories · orders · users · coupons
-│   └── shop/        home · products · product-detail · cart · checkout · checkout-success
-│                    my-orders · order-detail · wishlist · my-coupons · profile
-│                    tryon-studio · contact · returns · sizing
-└── static/
-    ├── css/         tailwind.css
-    ├── js/          admin-spa.js · various page scripts
-    └── images/      accessories · bottom · top · winter-collection
+### 9.2 API
+- `GET /api/notifications` — 20 thông báo gần nhất
+- `GET /api/notifications/count` — số chưa đọc (cho badge)
+- `POST /api/notifications/{id}/read` — đánh dấu 1 đã đọc
+- `POST /api/notifications/read-all` — đánh dấu tất cả
 
-mobile-app/lib/                "nova_mobile"
-├── main.dart        App entry point
-├── core/            network/api_client.dart (Dio + JWT + cookie) · theme · config
-├── features/        auth · home · shop · product · cart · checkout · orders · wishlist · search · profile · notifications
-│                    (mỗi feature: screen + Riverpod provider)
-├── models/          user · product · cart · order · wishlist · notification · category
-├── router/          GoRouter setup
-└── shared/          Widgets dùng chung
-```
+### 9.3 Khi nào tạo thông báo
+- Đặt hàng thành công → thông báo user + admin
+- Admin cập nhật trạng thái → thông báo user
+
+---
+
+## 10. Virtual Try-On
+
+### 10.1 Luồng người dùng
+1. Upload ảnh người (max 5MB, jpg/png/webp, validate magic bytes)
+2. Nhận `personId` (UUID, lưu tạm trong `uploads/tryon-persons/`)
+3. Chọn sản phẩm → `POST /api/tryon/generate` (1 SP) hoặc `/generate-outfit` (áo+quần)
+4. Nhận JPEG bytes → hiển thị trực tiếp (URL.createObjectURL)
+5. Ảnh tạm tự xóa sau khi generate (finally block)
+
+### 10.2 Python server (port 8081)
+
+| Tier | Điều kiện | Xử lý |
+|------|-----------|-------|
+| 1 — Replicate IDM-VTON | Có `REPLICATE_API_TOKEN` + còn quota | Cloud, nhanh |
+| 2 — CatVTON local | Không token / quota hết / 402/429 | GPU local, fp16, 768×1024 |
+
+Outfit (2 SP):
+- SegFormer parse 1 lần → 2 mask không chồng nhau (upper + lower body)
+- Chạy CatVTON **2 lượt độc lập** trên ảnh gốc (KHÔNG chain tuần tự)
+- Composite từng vùng theo mask
+
+### 10.3 Admin quản lý garment
+- `TryOnService.updateTryOnSettings(productId, enabled, garmentImage, garmentType)`
+- `enabled=false` → tắt ngay, lưu DB
+- `enabled=true` + ảnh mới → gọi Python `/preprocess/garment` (rembg + normalize), fallback lưu raw nếu Python offline
+- `enabled=true` + không ảnh mới + đã có garment → giữ nguyên URL, chỉ update type + enabled
+
+### 10.4 Giao diện
+- **Try-On Studio** (`/tryon-studio`): sidebar 420px · tab Tops/Bottoms/All · ảnh upload max 420px · kết quả min-height 300px · lightbox zoom
+- **Product Detail modal**: modal 1040px · cột trái (upload 480px) · cột phải (kết quả 520px) · lightbox zoom · persist personId trong localStorage
+
+---
+
+## 11. AI Chatbot
+
+### 11.1 Kiến trúc
+- `AiChatbotService` → `GeminiChatClient` → Gemini REST API v1beta
+- Model: `gemini-2.5-flash` (mặc định; đổi qua `GEMINI_MODEL`)
+- `thinkingBudget=0` tắt thinking để không cụt token khi function calling
+
+### 11.2 Function calling tools
+| Tool | Mô tả |
+|------|-------|
+| `search_products` | Tìm SP theo category/subcategory/color/keyword/minPrice/maxPrice/limit |
+| `get_best_sellers` | Lấy SP bán chạy nhất |
+| `get_product_details` | Chi tiết SP (name, variants, colors, sizes, stock) |
+
+### 11.3 Vòng lặp tối đa MAX_STEPS=4
+- Gemini → functionCall → executeFunction() → functionResponse → Gemini → ...
+- Kết thúc khi Gemini trả text (không có thêm functionCall)
+
+### 11.4 Lịch sử hội thoại
+- Lưu trong `HttpSession` (key `chatbot_history`, max 12 turns)
+- Gửi 6 turns gần nhất vào Gemini mỗi lần (appendHistory)
+
+### 11.5 Fallback & Cooldown
+- Không có API key / AI offline → trả best-sellers + text thân thiện
+- 429/401/403 → `aiDisabledUntil = now + cooldownSeconds(300)` (volatile)
+
+---
+
+## 12. Admin
+
+### 12.1 Dashboard
+- KPI: tổng đơn hàng · đơn hôm nay · doanh thu hôm nay/tuần/tháng/năm · tổng users · cảnh báo stock ≤10
+- Biểu đồ doanh thu: 7 ngày gần nhất · 4 tuần · 12 tháng · 5 năm
+- `DashboardService`: low stock threshold = 10 units
+- Xuất Excel: `ReportService` dùng Apache POI, sheet chi tiết đơn hàng
+
+### 12.2 Quản lý sản phẩm
+- Trang **Thêm** và **Sửa** đều có:
+  - Gallery ảnh kéo-thả (drag/drop HTML5) → thứ tự lưu vào `sort_order`
+  - Ảnh đầu = bìa (`primaryImage=true`, nhãn COVER xanh)
+  - Nút ✕ xóa ảnh (ảnh cũ → thêm vào `imagesToDelete`, ảnh mới → bỏ khỏi mảng)
+  - Card Try-On: toggle on/off → ẩn/hiện ô upload garment
+  - **1 nút Save duy nhất** lưu hết: thông tin + variants + ảnh + try-on state
+
+### 12.3 Quản lý đơn hàng
+- Danh sách toàn bộ đơn (phân trang, lọc)
+- Cập nhật trạng thái: AJAX (`POST /api/admin/orders/{id}/status`) hoặc form web
+- Duyệt yêu cầu hủy
+
+### 12.4 Quản lý người dùng
+- Danh sách · khóa/mở tài khoản · gán ADMIN role
+
+### 12.5 Quản lý coupon
+- Tạo/sửa/xóa coupon PERCENTAGE hoặc FIXED
+- Đặt thời hạn · ngưỡng đơn · giới hạn lượt dùng
+
+### 12.6 Analytics API (ADMIN only)
+- `GET /api/analytics/top-products?limit=10` — top SP bán chạy
+- `GET /api/analytics/trending?limit=8` — trending (best sellers)
+- `GET /api/analytics/overview` — KPI tổng: orders, revenue, users, stock, sold
+- `GET /api/admin/stats/summary` — snapshot nhẹ cho AJAX dashboard refresh
+
+---
+
+## 13. Flutter Mobile App
+
+- **Package**: `nova_mobile`
+- **State management**: Riverpod 2.6
+- **Routing**: GoRouter 14
+- **HTTP**: Dio 5 + JWT interceptor (auto-attach `Authorization: Bearer`)
+- **Base URL**: `http://10.0.2.2:8080` (Android emulator) / `http://localhost:8080` (iOS simulator)
+
+### Màn hình
+| Feature | Màn hình |
+|---------|---------|
+| Auth | Login · Register · Forgot password |
+| Shop | Home · Product list · Product detail · Search |
+| Cart | Cart · Checkout · Checkout success |
+| Orders | My orders · Order detail |
+| Profile | Profile view/edit · Change password |
+| Wishlist | Wishlist |
+| Notifications | Notification list |
+
+---
+
+## 14. Email
+
+- `EmailService` — async (`@Async`) dùng Gmail SMTP
+- Trường hợp gửi: reset mật khẩu, xác nhận đơn hàng, cập nhật trạng thái
+- Cấu hình: `MAIL_USERNAME` + `MAIL_PASSWORD` (Gmail App Password)
+
+---
+
+## 15. Cache
+
+`CacheConfig` dùng Caffeine:
+- `bestSellers` — danh sách bán chạy (evict khi tạo/xóa/cập nhật sản phẩm)
+- `tryOnProducts` — sản phẩm có try-on enabled (evict khi bật/tắt try-on)
+
+---
+
+## 16. Upload & Storage
+
+- `FileStorageService` lưu vào thư mục `uploads/` (cấu hình qua `upload.dir`)
+- Subfolder:
+  - `products/` — ảnh sản phẩm (admin upload)
+  - `tryon-garments/` — ảnh garment đã preprocess
+  - `tryon-persons/` — ảnh người tải lên (tạm, xóa sau generate)
+  - `reviews/` — ảnh đính kèm review
+- Validate magic bytes khi upload person image (jpg/png/webp · max 5MB)
+- Phòng chống path traversal: normalize + check startsWith(uploadDir)
+
+---
+
+## 17. Monitoring & Ops
+
+- **Swagger UI**: `/swagger-ui.html` (Springdoc OpenAPI)
+- **Actuator**: `/actuator/health` (public) · `/actuator/**` (ADMIN)
+- **Graceful shutdown**: `server.shutdown=graceful` · timeout 30s
+- **Async**: `tryOnExecutor` thread pool cho Try-On generation
+- **Logging**: request ID filter (`RequestIdFilter`) thêm `reqId` vào MDC

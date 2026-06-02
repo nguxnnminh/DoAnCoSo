@@ -1,150 +1,115 @@
-# Nhật ký công việc — Work Log
+# Work Log — Nhật Ký Công Việc
 
-> File này ghi lại **chi tiết từng thay đổi** do AI assistant (Claude) thực hiện trên dự án.
-> Mục đích: bất kỳ ai đọc vào cũng hiểu **đã sửa file nào, ở vị trí nào, sửa gì và tại sao**.
->
-> **Quy ước:** Mỗi lần sửa/thêm code, một dòng mới được thêm vào bảng tương ứng. Cập nhật liên tục.
+> Ghi lại chi tiết các thay đổi kỹ thuật, lý do, vị trí file.  
+> Xem tổng quan tính năng: [features.md](features.md) · Lịch sử thay đổi: [changelog.md](changelog.md)
 
 ---
 
-## 📌 Tổng quan nhanh
+## Môi trường phát triển
 
-| Hạng mục | Số lượng |
-|----------|----------|
-| Tổng số commit của AI | 3 (`7beb15b`, `cf94230`, `6183271`) |
-| File code Java đã sửa | 6 |
-| File template (HTML) đã sửa | 1 |
-| File cấu hình đã sửa | 2 (`.gitignore`, `application.properties`) |
-| File tài liệu đã tạo | 4 (`README.md`, `docs/features.md`, `docs/changelog.md`, `docs/work-log.md`) |
-| Phần mềm đã cài cho môi trường chạy | JDK 17, MariaDB 11.4, Google Gemini API (chatbot, không cài đặt local) |
-
----
-
-## 🗂️ BẢNG 1 — Các file CODE đã sửa (chi tiết vị trí + giải thích)
-
-| # | File (vị trí) | Vị trí cụ thể trong file | Đã sửa gì | Tại sao / Giải thích cho người đọc |
-|---|---------------|--------------------------|-----------|-----------------------------------|
-| 1 | `src/main/resources/application.properties` | Dòng 23 — mục `EMAIL CONFIG` | Đổi `spring.mail.password=${MAIL_PASSWORD:abxk aruk haxy ftrn}` → `${MAIL_PASSWORD:}` | **Bảo mật:** mật khẩu Gmail thật đang bị lộ trong source code (commit lên git ai cũng thấy). Xóa đi, để rỗng — app vẫn chạy bình thường, mật khẩu thật chỉ nạp qua biến môi trường `MAIL_PASSWORD`. |
-| 2 | `src/main/resources/application.properties` | Dòng 45 — mục `JWT CONFIG` | Đổi giá trị default của `jwt.secret` thành chuỗi ghi rõ "chỉ dùng local dev" | **Bảo mật:** secret cũ là chuỗi bí mật trông như thật bị commit lên git → token JWT có thể bị giả mạo. Đổi thành chuỗi rõ ràng chỉ dùng cho máy local. |
-| 3 | `src/main/java/com/shop/clothingstore/repository/CouponRepository.java` | Sau dòng `findByActiveTrueAndUserSpecificFalse()` | Thêm method `boolean existsByCodeIgnoreCase(String code)` | **Hiệu năng:** để thay thế cách kiểm tra mã coupon cũ (xem mục #4). Spring Data JPA tự sinh câu query `EXISTS` rất nhanh. |
-| 4 | `src/main/java/com/shop/clothingstore/service/CouponService.java` | Method `existsByCode()` | Bỏ `couponRepository.findAll().stream()...` thay bằng `couponRepository.existsByCodeIgnoreCase(code.trim())` | **Hiệu năng:** code cũ tải TOÀN BỘ coupon từ DB vào RAM rồi lọc — chậm và tốn bộ nhớ khi có nhiều coupon. Code mới chỉ chạy 1 câu query đếm. |
-| 5 | `src/main/java/com/shop/clothingstore/service/CouponService.java` | Method `save()` và `delete()` | Xóa annotation `@SuppressWarnings("null")` thừa | **Dọn code:** annotation này che cảnh báo không cần thiết, gây khó đọc. |
-| 6 | `src/main/java/com/shop/clothingstore/controller/ProfileController.java` | Đầu class | Thêm hằng số `MIN_PASSWORD_LENGTH = 8` và `PHONE_PATTERN` (regex SĐT Việt Nam) | **Chuẩn hóa:** để dùng lại cho việc kiểm tra dữ liệu (xem #7, #8). |
-| 7 | `src/main/java/com/shop/clothingstore/controller/ProfileController.java` | Method `updateProfile()` | Thêm kiểm tra: họ tên không rỗng/≤100 ký tự, SĐT đúng định dạng VN, địa chỉ ≤500 ký tự; `orElseThrow` có thông báo rõ | **Bảo mật + đúng đắn:** trước đây người dùng có thể lưu họ tên 10.000 ký tự hay SĐT sai định dạng. Giờ kiểm tra trước khi lưu vào DB. |
-| 8 | `src/main/java/com/shop/clothingstore/controller/ProfileController.java` | Method `changePassword()` | Đổi yêu cầu độ dài mật khẩu tối thiểu từ 6 → 8 ký tự | **Bảo mật + nhất quán:** lúc đăng ký yêu cầu ≥8 ký tự, nhưng đổi mật khẩu chỉ cần ≥6 → người dùng có thể hạ cấp độ mạnh mật khẩu. Giờ đồng bộ 8 ký tự ở cả 2 nơi. |
-| 9 | `src/main/java/com/shop/clothingstore/controller/ReviewController.java` | Dòng gọi `findByEmail(...).orElseThrow()` | Thêm thông báo lỗi rõ ràng vào `orElseThrow` | **Đúng đắn:** trước đây nếu lỗi sẽ ném exception trống → trả về lỗi 500 khó hiểu. Giờ có thông báo rõ. |
-| 10 | `src/main/java/com/shop/clothingstore/controller/api/AuthApiController.java` | Method `register()` | Đổi thông báo lỗi "Email already in use: <email>" → "Registration failed..." (chung chung) + ghi log nội bộ | **Bảo mật:** thông báo cũ tiết lộ email nào đã tồn tại trong hệ thống → kẻ xấu dò được danh sách email. Giờ trả thông báo chung. |
-| 11 | `src/main/java/com/shop/clothingstore/service/AiChatbotService.java` | Đầu method `processMessage()` | Thêm giới hạn cắt tin nhắn người dùng tối đa 2000 ký tự | **Bảo mật:** chặn người dùng gửi tin nhắn cực dài (vài trăm KB) gây tốn tài nguyên / tràn bộ nhớ khi gọi AI. |
-| 12 | `src/main/java/com/shop/clothingstore/service/AiChatbotService.java` | `record ActionPlan` + chỗ gọi `ActionPlan.general()` | Xóa tham số thừa `messageHint` không dùng | **Dọn code:** tham số khai báo nhưng không bao giờ dùng. |
+| Thành phần | Chi tiết |
+|------------|---------|
+| JDK | 17 (Eclipse Temurin) |
+| Database | MySQL 8 (local port 3306, database: `clothingstore`) |
+| IDE | VS Code + Extension Pack for Java |
+| Build tool | Maven (./mvnw) |
+| AI Chatbot | Google Gemini 2.5 Flash (API cloud — đặt `GEMINI_API_KEY`) |
+| Virtual Try-On | Python FastAPI port 8081 · CatVTON local (RTX 3050Ti 4GB) |
+| Mobile | Flutter SDK 3.11+, Android emulator / thiết bị thật |
 
 ---
 
-## 🤖 BẢNG 2 — Nâng cấp AI Chatbot (Tier 1)
+## Bảng 1 — Files Java đã sửa / tạo (theo thứ tự thời gian)
 
-| # | File (vị trí) | Vị trí cụ thể trong file | Đã thêm/sửa gì | Giải thích chi tiết |
-|---|---------------|--------------------------|----------------|---------------------|
-| 13 | `src/main/java/com/shop/clothingstore/service/AiChatbotService.java` | Method `processMessage` | Thêm overload `processMessage(String userMessage, List<Map<String,Object>> history)`; bản cũ `processMessage(String)` gọi lại bản mới với history rỗng | **Ngữ cảnh hội thoại:** cho phép truyền lịch sử các tin nhắn trước vào để bot "nhớ" cuộc trò chuyện. |
-| 14 | `src/main/java/com/shop/clothingstore/service/AiChatbotService.java` | Method mới `appendHistory(...)` | Thêm method ghép tối đa 6 lượt hội thoại gần nhất (role user/assistant) vào danh sách gửi cho LLM, có kiểm tra dữ liệu rác | **Ngữ cảnh hội thoại:** lấy đúng lịch sử hợp lệ, giới hạn 6 lượt để không làm prompt quá dài. |
-| 15 | `src/main/java/com/shop/clothingstore/service/AiChatbotService.java` | Method `planAction(...)` và `answerGeneral(...)` | Thêm tham số `history`, gọi `appendHistory()` trước tin nhắn hiện tại; cập nhật system prompt nhắc LLM tham chiếu ngữ cảnh | **Ngữ cảnh hội thoại:** giờ bot hiểu câu hỏi nối tiếp như "còn màu khác không?", "rẻ hơn được không?". |
-| 16 | `src/main/java/com/shop/clothingstore/controller/api/ChatbotApiController.java` | Toàn bộ controller | Thêm quản lý lịch sử hội thoại trong `HttpSession` (key `chatbot_history`, tối đa 12 entries); đọc history trước khi xử lý, ghi lại sau khi trả lời; parse phòng thủ dữ liệu session | **Ngữ cảnh hội thoại:** lưu cuộc trò chuyện theo từng phiên người dùng, dùng session sẵn có (spring-session-jdbc) nên không cần thêm bảng DB. |
-| 16b | `src/main/java/com/shop/clothingstore/controller/api/ChatbotApiController.java` | Method `chat()` — đầu method | **Bỏ "cổng chặn"** `if (!isEnabledAndConfigured()) return "not enabled"`; luôn gọi `processMessage()` | **Đảm bảo chat chạy mọi máy:** trước đây nếu AI tắt (hoặc máy clone về không cài Ollama + ai đó set `CHATBOT_AI_ENABLED=false`), controller chặn ngay → chat chỉ trả "not enabled", cả FAQ lẫn tìm sản phẩm đều không chạy. Giờ luôn vào `processMessage()` → rule-based FAQ + tìm sản phẩm **luôn hoạt động**, chỉ câu hỏi tự do mới cần AI và tự fallback lịch sự. Đã test với AI tắt: FAQ ✅, tìm SP ra 2 kết quả ✅, bán chạy 6 SP ✅. |
-| 17 | `src/main/resources/templates/layout/base.html` | Khối CSS `/* ===== CHATBOT ===== */` | Thêm CSS class `.chat-chip` (nút gợi ý) và `.chat-caret` (con trỏ nhấp nháy) | **Giao diện:** tạo kiểu cho nút gợi ý câu hỏi và hiệu ứng con trỏ gõ chữ. |
-| 18 | `src/main/resources/templates/layout/base.html` | Trong `#chat-messages`, sau bong bóng chào | Thêm 5 nút quick-reply: Bán chạy / Tư vấn size / Đổi trả / Vận chuyển / Hoodie dưới 500k | **Trải nghiệm:** gợi ý sẵn câu hỏi để người dùng không bí, bấm 1 nút là gửi luôn. |
-| 19 | `src/main/resources/templates/layout/base.html` | Khối `<script>` | Thêm hàm `quickAsk(text)` (bấm chip để gửi) và `typeWriter(el, text, done)` (hiệu ứng gõ chữ); sửa `sendChat()` để dùng typewriter và ẩn chip sau tin đầu | **Trải nghiệm:** chữ bot hiện dần từng ký tự như ChatGPT, cảm giác mượt và "thông minh" hơn. Đây là hiệu ứng phía client (không cần sửa backend) nên an toàn. |
-
----
-
-## 📄 BẢNG 3 — File tài liệu đã tạo
-
-| # | File | Nội dung | Mục đích |
-|---|------|----------|----------|
-| 20 | `README.md` | Giới thiệu, tech stack, hướng dẫn cài đặt/chạy, biến môi trường, kiến trúc, roadmap | Tài liệu chính của dự án — người mới đọc vào hiểu ngay cách chạy |
-| 21 | `docs/features.md` | Liệt kê đầy đủ mọi tính năng đã làm (khách hàng, admin, API, kỹ thuật, entities) | Tổng kết toàn bộ chức năng dự án |
-| 22 | `docs/changelog.md` | Lịch sử thay đổi theo format BEFORE/AFTER + danh sách 8 việc dự định làm tiếp (TODO) | Theo dõi mọi thay đổi và kế hoạch tương lai |
-| 23 | `docs/work-log.md` | Chính file này — bảng chi tiết mọi thay đổi với vị trí file + giải thích | Để bất kỳ ai cũng check được AI đã làm gì, ở đâu, tại sao |
+| # | File | Vị trí thay đổi | Mô tả thay đổi | Lý do |
+|---|------|-----------------|----------------|-------|
+| 1 | `entity/User.java` | Thêm fields referral | `referralCode` (unique, 16 chars), `referredById`, `referralRewarded` | Hệ thống giới thiệu bạn bè |
+| 2 | `entity/ProductImage.java` | Thêm field `sortOrder` | `@Column(name="sort_order") Integer sortOrder = 0` | Lưu thứ tự gallery kéo-thả |
+| 3 | `entity/Product.java` | Sửa `@OrderBy` + `getImages()` | `sortOrder ASC, primaryImage DESC, id ASC` · sort in-memory theo cùng tiêu chí | Đảm bảo thứ tự ảnh nhất quán cả DB-side lẫn in-memory |
+| 4 | `entity/Review.java` | `@ElementCollection imageUrls` | Bảng `review_images(review_id, image_url)` | Cho phép đính kèm ≥1 ảnh / review |
+| 5 | `entity/Coupon.java` | Thêm `userSpecific` + logic | `userSpecific = false` (default); `isValid()`, `applyDiscount()`, `calculateDiscountAmount()` | Hỗ trợ coupon chỉ dành cho user cụ thể (referral reward) |
+| 6 | `dto/ProductCreateDTO.java` | Thêm `tryOnEnabled` | `Boolean tryOnEnabled = false` | Đồng bộ toggle UI với trang Thêm |
+| 7 | `dto/ProductUpdateDTO.java` | Thêm `imageOrder`, `tryOnEnabled`, `garmentImage`, `garmentType` | `List<String> imageOrder`, `Boolean tryOnEnabled`, `MultipartFile garmentImage`, `String garmentType` | Gallery reorder + unified try-on save |
+| 8 | `service/ProductService.java` | `saveImages()`, `applyImageOrder()`, `createProduct()` | `saveImages` thêm `baseOrder` param; `applyImageOrder` xử lý token `E{id}`/`N{k}`; bỏ xử lý garment khỏi createProduct | Hỗ trợ kéo-thả sắp xếp ảnh + sort_order; garment chuyển sang TryOnService |
+| 9 | `service/TryOnService.java` | Thêm `updateTryOnSettings()`, refactor `preprocessAndEnable()` | `updateTryOnSettings(productId, enabled, garmentImage, type)` — logic 4 nhánh; `preprocessAndEnable` delegate về method mới | Unified save cho cả create & edit; không còn 2 form riêng |
+| 10 | `service/AiChatbotService.java` | **Viết lại hoàn toàn** | Xóa rule-based; thêm Gemini function calling (MAX_STEPS=4); 3 tools: `search_products`, `get_best_sellers`, `get_product_details`; system prompt động từ DB; fallback best-sellers | Chuyển từ Ollama local sang Gemini cloud; AI-first, ít rule |
+| 11 | `service/ai/GeminiChatClient.java` | **File mới** | REST client gọi Gemini `generateContent` API v1beta; hỗ trợ multi-turn + function declarations; `thinkingBudget=0` | Thay thế OllamaChatClient |
+| 12 | `service/ai/OllamaChatClient.java` | **Xóa** | Đã gỡ hoàn toàn | Không còn dùng Ollama |
+| 13 | `config/ChatbotAiProperties.java` | **Viết lại** | Xóa Ollama fields; thêm `geminiApiKey`, `geminiModel`, `geminiBaseUrl` | Config Gemini |
+| 14 | `controller/admin/AdminProductController.java` | `createProduct()`, `updateProduct()` | Inject `TryOnService`; gọi `updateTryOnSettings()` sau khi save sản phẩm; `parseGarmentType()` helper | Lưu try-on state + garment chung 1 nút |
+| 15 | `controller/api/ChatbotApiController.java` | Comment trong `chat()` | Sửa comment cũ nhắc Ollama → Gemini | Dọn sạch reference Ollama |
 
 ---
 
-## ⚙️ BẢNG 4 — Cài đặt môi trường chạy (không thuộc code dự án)
+## Bảng 2 — Files Template đã sửa
 
-| # | Việc đã làm | Vị trí cài | Mục đích |
-|---|-------------|-----------|----------|
-| 24 | Cài JDK 17 (Temurin) portable | `C:\devtools\jdk\jdk-17.0.13+11` | Để biên dịch & chạy Spring Boot (máy chưa có Java) |
-| 25 | Cài MariaDB 11.4 portable (thay MySQL) | `C:\devtools\mariadb\mariadb-11.4.4-winx64`, data tại `C:\devtools\mariadb-data` | Database cho app (tương thích 100% với mysql-connector-j). Đã tạo DB `clothingstore` |
-| 26 | Dùng Google Gemini cho AI Chatbot (đã gỡ Ollama) | API cloud — đặt `GEMINI_API_KEY` (model `gemini-2.5-flash`), không cài đặt local | AI Chatbot dùng API free + function calling, không cần chạy LLM local cho nhẹ máy |
-| 27 | Sửa cấu hình git: xóa credential `Viet1117`, đăng nhập lại `halam03` | Windows Credential Manager | Để push code lên đúng tài khoản có quyền |
-
----
-
-## 🚀 BẢNG 5 — 5 tính năng lớn mới (2026-05-29)
-
-> Mỗi tính năng: code → compile → test → E2E → review → fix. Xem kế hoạch: [feature-plan.md](feature-plan.md)
-
-### F1 — UI trang chủ: hero banner + slider
-| File | Đã làm | Giải thích |
-|------|--------|-----------|
-| `templates/shop/home.html` | Thay hero tĩnh bằng slider 3 slide tự xoay (5.5s), nút prev/next, dots, hiệu ứng ken-burns; CSS `.hero-slider/.hero-slide/.hero-dot`; JS điều khiển (pause khi hover/ẩn tab, tôn trọng prefers-reduced-motion) | Trang chủ ấn tượng hơn. Vanilla JS, không thư viện → clone về chạy ngay. **E2E:** homepage HTTP 200, có 3 slide ✅ |
-
-### F2 — Full-text search (MySQL/MariaDB FULLTEXT) + autocomplete
-| File | Đã làm | Giải thích |
-|------|--------|-----------|
-| `config/FullTextIndexInitializer.java` (MỚI) | Tạo FULLTEXT index `ft_products_name_desc` trên products(name,description) lúc khởi động nếu chưa có (idempotent), guard chống SQL injection | Máy clone về tự có index, không cần chạy SQL tay |
-| `repository/ProductRepository.java` | Thêm `fullTextSearchIds` (MATCH AGAINST BOOLEAN MODE, xếp relevance) + `findByIdInAndActiveTrue` (EntityGraph tránh lazy) | Truy vấn full-text + tải an toàn |
-| `service/ProductService.java` | `fullTextSearch(query, limit)` — thử MATCH, fallback LIKE; `buildBooleanQuery` | Luôn ra kết quả kể cả khi index lỗi/tiếng Việt |
-| `controller/api/ProductApiController.java` | Endpoint `GET /api/products/suggest?q=` | Autocomplete API |
-| `templates/shop/products.html` | Dropdown autocomplete (debounce 220ms, phím ↑↓ Enter Esc), CSS `.ac-*` | Gợi ý SP khi gõ. **E2E:** suggest('hoodie')→2 ✅ |
-
-### F3 — Review có ảnh đính kèm
-| File | Đã làm | Giải thích |
-|------|--------|-----------|
-| `entity/Review.java` | Thêm `@ElementCollection List<String> imageUrls` (bảng phụ `review_images`) | Lưu nhiều ảnh/review (ddl-auto tự tạo bảng) |
-| `service/ReviewService.java` | Overload `createReview(...imageUrls)`, giới hạn 5 ảnh | Lưu URL ảnh |
-| `controller/ReviewController.java` | Nhận `MultipartFile[] images`, validate (≤5MB, jpg/png/webp), upload qua FileStorageService | Upload an toàn |
-| `templates/shop/order-detail.html` | Form review thêm `enctype=multipart` + input file | Khách chọn ảnh |
-| `templates/shop/product-detail.html` | Hiển thị gallery ảnh trong mỗi review | Xem ảnh review |
-
-### F4 — SSE real-time notification
-| File | Đã làm | Giải thích |
-|------|--------|-----------|
-| `service/SseService.java` (MỚI) | Registry SseEmitter theo userId + kênh admin; push tới user/admin (best-effort, thread-safe ConcurrentHashMap/CopyOnWriteArrayList) | Đẩy thông báo real-time |
-| `controller/SseNotificationController.java` (MỚI) | `GET /notifications/stream` (web-chain, session-auth) | Trình duyệt EventSource kết nối |
-| `service/NotificationService.java` | Inject SseService; push tới user khi tạo notification + push "đơn mới" tới admin | Wire real-time vào nghiệp vụ |
-| `templates/layout/base.html` + `admin.html` | EventSource + toast (gate theo đăng nhập) | Hiện toast. **E2E:** /notifications/stream anonymous→302 (bảo vệ auth) ✅ |
-
-### F5 — Hệ thống mã giới thiệu (referral)
-| File | Đã làm | Giải thích |
-|------|--------|-----------|
-| `entity/User.java` | Thêm `referralCode` (unique), `referredById`, `referralRewarded` | Dữ liệu referral |
-| `service/ReferralService.java` (MỚI) | Sinh mã, gắn người giới thiệu (chống tự ref), trao thưởng đơn đầu | Logic referral |
-| `config/ReferralBackfillInitializer.java` (MỚI) | Gán mã cho user cũ lúc khởi động (idempotent) | Clone về user cũ vẫn có mã. **Verified:** backfill 2 user ✅ |
-| `service/UserService.java` | Overload `registerUser(...refCode, fullName)` — sinh mã + gắn ref + set tên trong 1 transaction | Đăng ký nguyên tử |
-| `service/OrderService.java` | Khi đơn COMPLETED → `rewardOnFirstCompletedOrder` (best-effort) | Trao coupon cho cả 2 |
-| `controller/AuthController.java` + `api/AuthApiController.java` | Nhận `?ref=CODE` / field ref | Liên kết người giới thiệu |
-| `templates/shop/profile.html` | Card hiển thị mã + link giới thiệu + nút copy | Khách chia sẻ. **E2E:** đăng ký ref→referred_by_id liên kết đúng ✅ |
-| `templates/auth/register.html` | Hidden input `ref` | Gửi mã khi đăng ký |
+| # | File | Vị trí | Mô tả | Lý do |
+|---|------|--------|-------|-------|
+| 1 | `admin/products/create.html` | Vùng PRODUCT IMAGES | Thay preview tĩnh bằng gallery JS kéo-thả: `DataTransfer` rebuild file input, render thumbnail draggable + nút ✕, nhãn COVER cho ảnh đầu | Sắp xếp ảnh ngay khi tạo |
+| 2 | `admin/products/create.html` | Card Virtual Try-On | Đổi sang layout giống edit: toggle on/off (JS `syncTryOn()`), ẩn/hiện ô upload | Nhất quán UI giữa create và edit |
+| 3 | `admin/products/edit.html` | Vùng PRODUCT IMAGES | Gộp "Existing Images" + "Add New Images" thành 1 gallery; seed từ `#existingImagesData span[data-id][data-url]`; gallery items `{type:'existing',id,url}` / `{type:'new',file,url}`; submit: sinh `imageOrder` inputs + rebuild `newImages` input | Trộn ảnh cũ/mới trong 1 gallery kéo-thả |
+| 4 | `admin/products/edit.html` | Card Virtual Try-On | **Xóa** 2 form riêng (enable/disable); thêm card trong `productEditForm`: toggle `th:checked="${product.tryOnEnabled}"`, style tĩnh (không dùng `th:style` để tránh mất `position:absolute`), JS `syncTryOn()` set initial state + ẩn/hiện `tryOnFields` | Unified save + fix bug toggle vô hình |
+| 5 | `shop/tryon-studio.html` | Sidebar | Rộng `340px→420px`; upload zone `min-height 320px`, icon upload, preview ảnh `max 420px`; "Change photo" link; lightbox (`openStudioLightbox`) | Ảnh to và rõ hơn |
+| 6 | `shop/tryon-studio.html` | Kết quả | `min-height 300px`, hint "tap to enlarge"; Download button lớn hơn; lightbox khi click kết quả | Kết quả to và rõ hơn |
+| 7 | `shop/product-detail.html` | Try-On modal | Modal rộng `780px→1040px`; upload zone `min-height 380px`, icon, prompt div; kết quả `max-height 520px`; lightbox (`openTryonLightbox`); nút "Change photo" | Ảnh to và rõ hơn + fix bấm vào zone để chọn file |
+| 8 | `shop/product-detail.html` | Upload zone JS | `onclick="document.getElementById('tryonPersonInput').click()"` trên `div.upload-zone`; `event.stopPropagation()` trên ảnh để mở lightbox thay vì mở file picker | Bug: bấm vào zone không mở file picker |
 
 ---
 
-## 🛡️ BẢNG 6 — Fix theo code-review (6 lỗi HIGH)
+## Bảng 3 — Files Config / Tài nguyên đã sửa
 
-| # | File | Lỗi | Cách fix |
-|---|------|-----|----------|
-| 25b | `ReferralService.java` + `UserRepository.markReferralRewarded` | **Trao coupon TRÙNG** khi 2 đơn của 1 khách hoàn tất đồng thời (race) | Atomic check-and-set bằng `UPDATE ... WHERE referral_rewarded=false` (chỉ 1 luồng thắng) + `@Transactional(REQUIRES_NEW)` |
-| 25c | `NotificationService.java` (5 method notify*) | Lỗi lưu notification làm **rollback nghiệp vụ chính** (đặt đơn/đổi trạng thái) | `@Transactional(REQUIRES_NEW)` trên các public method → notification chạy TX riêng |
-| 25d | `SseService.java` `remove()` | Race TOCTOU giữa `isEmpty()` và `remove()` | Dùng `userEmitters.compute()` nguyên tử |
-| 25e | `SseService.java` `subscribe()` | Admin nhận **toast trùng** (đăng ký cả kênh user lẫn admin) | Admin chỉ đăng ký kênh admin |
-| 25f | `UserService` + `AuthApiController` | Đăng ký API lưu user 2 lần (fullName set sau) — mất nguyên tử | Overload `registerUser(...fullName)` set trước khi lưu, 1 transaction |
-| 25g | `FullTextIndexInitializer.java` | Pattern Statement nối chuỗi (nguy cơ injection nếu sau này dùng giá trị động) | Static guard validate định danh `[A-Za-z0-9_]+` |
-
-**Kết quả:** 81 test PASS (gồm 8 test mới `ReferralServiceTest`), compile sạch, app chạy + smoke test 5 tính năng OK.
+| # | File | Thay đổi |
+|---|------|---------|
+| 1 | `resources/application.properties` | Xóa Ollama config; thêm `chatbot.ai.gemini-api-key/model/base-url`; model mặc định: `gemini-2.5-flash` |
+| 2 | `README.md` | Viết lại toàn bộ: thêm Security section chi tiết, DB schema đầy đủ, API endpoints, cấu trúc thư mục, roadmap |
+| 3 | `docs/features.md` | Viết lại từ code: 17 section chi tiết |
+| 4 | `docs/changelog.md` | Thêm entry 2026-06-02 (Gemini migration) |
+| 5 | `docs/work-log.md` | File này |
 
 ---
 
-## 🔗 Liên kết
-- Chi tiết tính năng: [features.md](features.md)
-- Lịch sử BEFORE/AFTER: [changelog.md](changelog.md)
-- Hướng dẫn chạy: [../README.md](../README.md)
+## Bảng 4 — Cài đặt phần mềm & môi trường
+
+| # | Hành động | Chi tiết | Mục đích |
+|---|-----------|---------|---------|
+| 1 | Cài JDK 17 (Temurin) | `C:\devtools\jdk\jdk-17.0.13+11` | Biên dịch & chạy Spring Boot |
+| 2 | Cài MySQL 8 | Port 3306, database `clothingstore` | Database chính |
+| 3 | Cài Flutter SDK | 3.11+ | Build mobile app |
+| 4 | Gỡ Ollama | Đã uninstall hoàn toàn khỏi Windows | Không còn dùng LLM local |
+| 5 | Google Gemini | API cloud (không cài local) — set `GEMINI_API_KEY` | AI Chatbot |
+| 6 | Sửa git credential | Đăng nhập đúng tài khoản GitHub | Push code |
 
 ---
 
-*Cập nhật lần cuối: 2026-05-29*
+## Bảng 5 — Bugs đã sửa
+
+| # | Bug | Triệu chứng | Root cause | Fix |
+|---|-----|-------------|-----------|-----|
+| 1 | Nested form HTML | Try-On trên edit page không submit được | Form Try-On lồng trong form chính → HTML invalid | Tách thành form riêng với action `/tryon/enable` |
+| 2 | Nested form (giải quyết triệt để) | Unified save mới: Try-On form riêng vẫn phức tạp | Hai form riêng gây trải nghiệm kém | Gộp Try-On vào form chính (multipart/form-data), xử lý trong controller sau khi save product |
+| 3 | Try-On toggle vô hình (edit) | Nút on/off không nhìn thấy | `th:style` ghi đè toàn bộ `style=""` bao gồm `position:absolute` → span co lại 0px | Bỏ `th:style`, dùng style tĩnh đầy đủ, JS `syncTryOn()` set trạng thái ban đầu |
+| 4 | Upload zone không mở file picker | Bấm vào khung không mở chọn file | `<div>` không có hành vi click mặc định như `<label for>` | Thêm `onclick="...input.click()"` trên div; `stopPropagation()` trên ảnh (tránh conflict lightbox) |
+| 5 | `productImages` thứ tự sai sau khi kéo-thả | Ảnh không đúng thứ tự sau save | Không có `sort_order` column, chỉ dùng `primaryImage DESC, id ASC` | Thêm cột `sort_order`, gán tuần tự khi submit; DB `@OrderBy` + in-memory sort đồng bộ |
+| 6 | Gemini 404 | Chatbot lỗi `models/gemini-1.5-flash is not found` | Key không có model `gemini-1.5-flash` | Gọi `ListModels` API xác nhận model available → đổi sang `gemini-2.5-flash` |
+| 7 | Gemini 429 quota | Chatbot lỗi `limit: 0` | Project của key không có free tier quota | Hướng dẫn tạo key mới qua "Create API key in new project" trong AI Studio |
+| 8 | API key lộ trong git | Key hardcode trong `application.properties` | Bạn đặt giá trị mặc định có key thật vào property file | Gỡ key khỏi file, chỉ dùng qua biến môi trường `GEMINI_API_KEY` |
+| 9 | `MultipleBagFetchException` | Hibernate lỗi khi fetch product | Hai `List` (productVariants + images) JOIN-fetch cùng lúc | Đổi `images` từ `List` sang `Set` — một `List` + một `Set` là an toàn |
+| 10 | Gemini token bị cụt | Response bị cắt giữa chừng khi function calling | `gemini-2.5-flash` bật thinking mặc định, thinking tokens cạnh tranh với `maxOutputTokens` | `"thinkingConfig": {"thinkingBudget": 0}` trong generationConfig |
+
+---
+
+## Bảng 6 — Quyết định kỹ thuật quan trọng
+
+| Quyết định | Lý do |
+|-----------|-------|
+| Gemini 2.5 Flash thay Ollama | Không cần cài LLM local, free tier đủ dùng, tiếng Việt tốt, hỗ trợ function calling |
+| Function calling thay rule-based | AI tự quyết định khi nào query DB → chính xác hơn, ít code cứng, mở rộng dễ |
+| `sort_order` column thay đổi thứ tự ngầm định | DB `@OrderBy` không đủ — cần giá trị explicit để persist thứ tự người dùng chọn |
+| Session-based cart | Hoạt động cho cả guest + user đã đăng nhập, không cần bảng cart trong DB |
+| Optimistic locking `@Version` trên Order | Ngăn race condition khi nhiều admin cập nhật cùng đơn |
+| `Set<ProductImage>` thay `List` | Tránh `MultipleBagFetchException` khi productVariants đã là `List` |
+| Tách Python server riêng (port 8081) | Inference GPU cần Python/PyTorch, không đưa vào JVM được |
+| `ddl-auto=update` | Tiện cho dev/prototype — cột mới như `sort_order` tự tạo khi khởi động |
+| `thinkingBudget=0` cho Gemini 2.5 Flash | Chatbot không cần "thinking"; tắt để dành toàn bộ `maxOutputTokens` cho answer |
+| UserSpecific coupon | Cho phép tạo coupon chỉ hiện với user cụ thể (referral reward) mà không cần bảng riêng |
+| Magic bytes validate cho upload | Không tin vào MIME type hay đuôi file — đọc header bytes thực để kiểm tra |
