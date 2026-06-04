@@ -201,9 +201,10 @@ User A có referralCode (16 ký tự unique, tạo khi đăng ký)
 ## 9. Notifications & SSE
 
 ### 9.1 SSE stream
-- `GET /notifications/stream` — `SseService` duy trì pool `SseEmitter` per user
-- Event type: `notification` · payload JSON
+- `GET /notifications/stream` — `SseService` duy trì pool `SseEmitter` per user (timeout 30 phút)
+- Event type: `notification` · `new-order` · payload JSON
 - Tự reconnect khi mất kết nối
+- ⚠️ **Lưu ý connection pool**: vì stream sống lâu, `spring.jpa.open-in-view` phải **tắt** (`false`) — nếu bật, mỗi stream giữ một JDBC connection suốt vòng đời và làm cạn HikariCP pool. Xem [changelog 2026-06-04].
 
 ### 9.2 API
 - `GET /api/notifications` — 20 thông báo gần nhất
@@ -280,6 +281,15 @@ Outfit (2 SP):
 
 ## 12. Admin
 
+### 12.0 UI modal AJAX (create / edit / detail)
+Mọi thao tác Thêm / Sửa / Xem chi tiết mở trong **modal làm mờ nền**, không nhảy trang riêng:
+- Link danh sách có `data-modal` (products/orders thêm `data-modal-wide` → modal 880px).
+- `admin-modal.js` fetch URL kèm header `X-Requested-With` → controller trả **fragment** `_form :: form` (hoặc `_detail :: detail`) → nhét vào `#ajaxModal`.
+- Submit `data-modal-form` qua `fetch` + `FormData` (giữ upload ảnh) → controller trả JSON: `{ok:true,message}` đóng modal + toast + refresh bảng; `{ok:false,error}` hiện banner trong modal.
+- Phát hiện AJAX & trả kết quả qua `AdminBaseController.isAjax() / ok() / fail()`.
+- Fallback non-AJAX: redirect list `?modal=create|edit|order&id=...`, client tự mở.
+- Module: categories · subcategories · coupons · users · products · orders. **Đã xóa toàn bộ trang riêng cũ.**
+
 ### 12.1 Dashboard
 - KPI: tổng đơn hàng · đơn hôm nay · doanh thu hôm nay/tuần/tháng/năm · tổng users · cảnh báo stock ≤10
 - Biểu đồ doanh thu: 7 ngày gần nhất · 4 tuần · 12 tháng · 5 năm
@@ -287,24 +297,26 @@ Outfit (2 SP):
 - Xuất Excel: `ReportService` dùng Apache POI, sheet chi tiết đơn hàng
 
 ### 12.2 Quản lý sản phẩm
-- Trang **Thêm** và **Sửa** đều có:
+- Modal **Thêm** (`_create_form`) và **Sửa** (`_edit_form`) — modal rộng (`data-modal-wide`) — đều có:
   - Gallery ảnh kéo-thả (drag/drop HTML5) → thứ tự lưu vào `sort_order`
   - Ảnh đầu = bìa (`primaryImage=true`, nhãn COVER xanh)
   - Nút ✕ xóa ảnh (ảnh cũ → thêm vào `imagesToDelete`, ảnh mới → bỏ khỏi mảng)
   - Card Try-On: toggle on/off → ẩn/hiện ô upload garment
   - **1 nút Save duy nhất** lưu hết: thông tin + variants + ảnh + try-on state
+  - JS đăng ký listener qua `AbortController` + `window.__adminPageCleanup` để hủy sạch khi đóng modal
 
 ### 12.3 Quản lý đơn hàng
 - Danh sách toàn bộ đơn (phân trang, lọc)
-- Cập nhật trạng thái: AJAX (`POST /api/admin/orders/{id}/status`) hoặc form web
-- Duyệt yêu cầu hủy
+- **Xem chi tiết trong modal** (`orders/_detail`): items, thông tin KH, đổi trạng thái, duyệt huỷ — tất cả submit AJAX
+- Cập nhật trạng thái cũng dùng được API `POST /api/admin/orders/{id}/status`
 
 ### 12.4 Quản lý người dùng
-- Danh sách · khóa/mở tài khoản · gán ADMIN role
+- Danh sách · tạo/sửa **trong modal** (`users/_form`) · gán ADMIN role
+- Sửa: email read-only, không có ô đổi mật khẩu (chỉ ở form tạo)
 
 ### 12.5 Quản lý coupon
-- Tạo/sửa/xóa coupon PERCENTAGE hoặc FIXED
-- Đặt thời hạn · ngưỡng đơn · giới hạn lượt dùng
+- Tạo/sửa **trong modal** (`coupons/_form`) coupon PERCENTAGE hoặc FIXED
+- Đặt thời hạn · ngưỡng đơn · giới hạn lượt dùng · toggle active
 
 ### 12.6 Analytics API (ADMIN only)
 - `GET /api/analytics/top-products?limit=10` — top SP bán chạy

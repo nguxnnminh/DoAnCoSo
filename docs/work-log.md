@@ -38,6 +38,17 @@
 | 13 | `config/ChatbotAiProperties.java` | **Viết lại** | Xóa Ollama fields; thêm `geminiApiKey`, `geminiModel`, `geminiBaseUrl` | Config Gemini |
 | 14 | `controller/admin/AdminProductController.java` | `createProduct()`, `updateProduct()` | Inject `TryOnService`; gọi `updateTryOnSettings()` sau khi save sản phẩm; `parseGarmentType()` helper | Lưu try-on state + garment chung 1 nút |
 | 15 | `controller/api/ChatbotApiController.java` | Comment trong `chat()` | Sửa comment cũ nhắc Ollama → Gemini | Dọn sạch reference Ollama |
+| 16 | `repository/OrderRepository.java` | `@EntityGraph` + query mới | `findByActorOrderByCreatedAtDesc` (+items); `findByIdWithItems` mới (+items +actor); `findTop5ByOrderByCreatedAtDesc` (+actor); `searchAdmin` (+actor) | OSIV tắt → fetch items/actor tường minh cho my-orders, order detail (modal), dashboard, admin orders list |
+| 16b | `repository/ReviewRepository.java` | `@EntityGraph` | `findAllByItemIdOrderByCreatedAtDesc` (+imageUrls +actor) | product-detail render `review.actor.fullName` khi OSIV tắt |
+| 17 | `repository/WishlistItemRepository.java` | `@EntityGraph` | `findByUser` thêm `@EntityGraph({product, product.images})` | Render thumbnail wishlist khi OSIV tắt |
+| 18 | `repository/ProductRepository.java` | `findProductForEdit` | Thêm `LEFT JOIN FETCH p.images` (đã có productVariants) | Modal sửa SP cần ảnh khi OSIV tắt |
+| 19 | `controller/admin/AdminBaseController.java` | Thêm helper | `isAjax(req)`, `ok(ajax,ra,msg,url)`, `fail(ajax,ra,err,url)` — trả JSON khi AJAX, redirect+flash khi không | Dùng chung cho modal AJAX 6 module |
+| 20 | `controller/admin/AdminCategoryController.java` | create/edit GET + create/update POST | GET → fragment `_form :: form`; POST trả `Object` (JSON/redirect) | Modal categories |
+| 21 | `controller/admin/AdminSubCategoryController.java` | tương tự | Fragment + JSON | Modal subcategories |
+| 22 | `controller/admin/AdminCouponController.java` | tương tự (DTO `couponDTO`) | Fragment + JSON; bỏ flash DTO khi AJAX | Modal coupons |
+| 23 | `controller/admin/AdminUserController.java` | tương tự | Fragment + JSON; password chỉ ở form tạo | Modal users |
+| 24 | `controller/admin/AdminProductController.java` | create/edit GET + POST | GET → `_create_form` / `_edit_form`; POST trả JSON; `firstError(BindingResult)` gộp lỗi validation | Modal products (rộng) |
+| 25 | `controller/admin/AdminOrderController.java` | detail GET + 3 POST action | GET → `_detail :: detail`; status/cancel-accept/cancel-deny trả JSON khi AJAX | Modal xem chi tiết đơn |
 
 ---
 
@@ -53,6 +64,12 @@
 | 6 | `shop/tryon-studio.html` | Kết quả | `min-height 300px`, hint "tap to enlarge"; Download button lớn hơn; lightbox khi click kết quả | Kết quả to và rõ hơn |
 | 7 | `shop/product-detail.html` | Try-On modal | Modal rộng `780px→1040px`; upload zone `min-height 380px`, icon, prompt div; kết quả `max-height 520px`; lightbox (`openTryonLightbox`); nút "Change photo" | Ảnh to và rõ hơn + fix bấm vào zone để chọn file |
 | 8 | `shop/product-detail.html` | Upload zone JS | `onclick="document.getElementById('tryonPersonInput').click()"` trên `div.upload-zone`; `event.stopPropagation()` trên ảnh để mở lightbox thay vì mở file picker | Bug: bấm vào zone không mở file picker |
+| 9 | `layout/admin.html` | CSS + host modal | Thêm `.modal-box--form`/`--wide`, header/error/spinner; container `#ajaxModal`; nạp `admin-modal.js` | Hạ tầng modal AJAX dùng chung |
+| 10 | `admin/categories/_form.html`, `subcategories/_form.html`, `coupons/_form.html`, `users/_form.html` | **File mới** | Fragment `[data-modal-content] th:fragment="form"` gộp create+edit theo cờ `isEdit` | Modal create/edit 4 module đơn |
+| 11 | `admin/products/_create_form.html`, `_edit_form.html` | **File mới** | Fragment riêng (form lớn: gallery + variants + try-on); JS dùng `AbortController` + `__adminPageCleanup` | Modal products rộng |
+| 12 | `admin/orders/_detail.html` | **File mới** | Fragment xem chi tiết đơn; form action gắn `data-modal-form` → submit AJAX | Modal xem/đổi trạng thái đơn |
+| 13 | `admin/*/index.html` (6 module) | Link Add New / Edit / View | Gắn `data-modal` (+`data-modal-wide` cho products/orders) | Mở modal thay vì điều hướng |
+| — | `admin/{categories,subcategories,coupons,users,products}/{create,edit}.html`, `admin/orders/show.html` | **Xóa** | Trang riêng cũ không còn dùng | Thay bằng fragment modal |
 
 ---
 
@@ -61,10 +78,13 @@
 | # | File | Thay đổi |
 |---|------|---------|
 | 1 | `resources/application.properties` | Xóa Ollama config; thêm `chatbot.ai.gemini-api-key/model/base-url`; model mặc định: `gemini-2.5-flash` |
-| 2 | `README.md` | Viết lại toàn bộ: thêm Security section chi tiết, DB schema đầy đủ, API endpoints, cấu trúc thư mục, roadmap |
-| 3 | `docs/features.md` | Viết lại từ code: 17 section chi tiết |
-| 4 | `docs/changelog.md` | Thêm entry 2026-06-02 (Gemini migration) |
-| 5 | `docs/work-log.md` | File này |
+| 2 | `resources/application.properties` | **(2026-06-04)** `spring.jpa.open-in-view=false`; Hikari `maximum-pool-size=20` · `minimum-idle=5` · `leak-detection-threshold=30000` |
+| 3 | `static/js/admin-modal.js` | **File mới** — fetch fragment, open/close overlay, submit AJAX (FormData), toast, auto-open `?modal=`, cleanup `__adminPageCleanup` |
+| 4 | `static/js/admin-spa.js` | Bỏ qua link `data-modal`; expose `window.adminSpaReload()` / `adminSpaNavigate()` |
+| 5 | `README.md` | Cập nhật: admin modal, OSIV/pool, cấu trúc thư mục templates/static |
+| 6 | `docs/features.md` | Thêm 12.0 (modal AJAX), cập nhật 12.2–12.5, lưu ý OSIV ở 9.1 |
+| 7 | `docs/changelog.md` | Thêm 2 entry 2026-06-04 (admin modal · fix OSIV pool) |
+| 8 | `docs/work-log.md` | File này |
 
 ---
 

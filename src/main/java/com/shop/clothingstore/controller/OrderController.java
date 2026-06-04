@@ -124,7 +124,7 @@ public class OrderController {
                     .findByEmail(principal.getName())
                     .orElseThrow();
 
-            Order order = orderService.findById(id)
+            Order order = orderService.findByIdWithItems(id)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
 
             // Only allow viewing own orders

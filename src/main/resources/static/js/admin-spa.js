@@ -30,6 +30,7 @@
         if (link.target && link.target !== '_self') return true;
         if (link.hasAttribute('download')) return true;
         if (link.closest('[data-no-spa]')) return true;
+        if (link.hasAttribute('data-modal')) return true; // handled by admin-modal.js
         if (link.getAttribute('href') === '#') return true;
         return false;
     }
@@ -226,4 +227,13 @@
     });
 
     updateActiveSidebar(new URL(window.location.href));
+
+    // Exposed so other admin scripts (e.g. the AJAX modal) can refresh the
+    // current list in place after a create/edit/delete without a full reload.
+    window.adminSpaReload = function () {
+        return navigate(window.location.href, { push: false });
+    };
+    window.adminSpaNavigate = function (url) {
+        return navigate(url);
+    };
 })();

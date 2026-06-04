@@ -17,6 +17,8 @@ import com.shop.clothingstore.entity.SubCategory;
 import com.shop.clothingstore.service.CategoryService;
 import com.shop.clothingstore.service.SubCategoryService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 @RequestMapping("/admin/subcategories")
 public class AdminSubCategoryController extends AdminBaseController {
@@ -48,30 +50,35 @@ public class AdminSubCategoryController extends AdminBaseController {
     // ── CREATE FORM ──────────────────────────────────────
     @GetMapping("/create")
     public String createForm(@RequestParam(required = false) Long categoryId,
-                             Model model) {
+                             Model model, HttpServletRequest request) {
         model.addAttribute("title", "Add Subcategory");
         model.addAttribute("currentPage", "categories");
         model.addAttribute("categories", categoryService.getAllCategories());
         model.addAttribute("preselectedCategoryId", categoryId);
         model.addAttribute("sizeTypes", com.shop.clothingstore.entity.SizeType.values());
-        return "admin/subcategories/create";
+        model.addAttribute("isEdit", false);
+        return isAjax(request)
+                ? "admin/subcategories/_form :: form"
+                : "redirect:/admin/subcategories?modal=create";
     }
 
     // ── CREATE POST ──────────────────────────────────────
     @PostMapping("/create")
-    public String create(@RequestParam String name,
+    public Object create(@RequestParam String name,
                          @RequestParam Long categoryId,
                          @RequestParam(required = false) String sizeType,
                          @RequestParam(required = false) String slug,
-                         RedirectAttributes ra) {
+                         RedirectAttributes ra,
+                         HttpServletRequest request) {
+        boolean ajax = isAjax(request);
+        String back = "/admin/subcategories/create";
+
         if (name == null || name.isBlank()) {
-            ra.addFlashAttribute("error", "Subcategory name cannot be empty.");
-            return "redirect:/admin/subcategories/create";
+            return fail(ajax, ra, "Subcategory name cannot be empty.", back);
         }
         Category category = categoryService.getCategoryById(categoryId).orElse(null);
         if (category == null) {
-            ra.addFlashAttribute("error", "Invalid main category.");
-            return "redirect:/admin/subcategories/create";
+            return fail(ajax, ra, "Invalid main category.", back);
         }
 
         String finalSlug = (slug != null && !slug.isBlank())
@@ -79,8 +86,7 @@ public class AdminSubCategoryController extends AdminBaseController {
                 : generateUniqueSlug(name);
 
         if (subCategoryService.getBySlug(finalSlug).isPresent()) {
-            ra.addFlashAttribute("error", "Slug '" + finalSlug + "' already exists.");
-            return "redirect:/admin/subcategories/create";
+            return fail(ajax, ra, "Slug '" + finalSlug + "' already exists.", back);
         }
 
         try {
@@ -92,23 +98,27 @@ public class AdminSubCategoryController extends AdminBaseController {
                 sc.setSizeType(com.shop.clothingstore.entity.SizeType.valueOf(sizeType));
             }
             subCategoryService.saveSubCategory(sc);
-            ra.addFlashAttribute("success", "Subcategory '" + name.trim() + "' created successfully!");
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error: " + e.getMessage());
+            return fail(ajax, ra, "Error: " + e.getMessage(), back);
         }
-        return "redirect:/admin/subcategories";
+        return ok(ajax, ra, "Subcategory '" + name.trim() + "' created successfully!", "/admin/subcategories");
     }
 
     // ── EDIT FORM ────────────────────────────────────────
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra) {
+    public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra,
+                           HttpServletRequest request) {
+        boolean ajax = isAjax(request);
         return subCategoryService.getSubCategoryById(id).map(sc -> {
             model.addAttribute("title", "Edit Subcategory");
             model.addAttribute("currentPage", "categories");
             model.addAttribute("subCategory", sc);
             model.addAttribute("categories", categoryService.getAllCategories());
             model.addAttribute("sizeTypes", com.shop.clothingstore.entity.SizeType.values());
-            return "admin/subcategories/edit";
+            model.addAttribute("isEdit", true);
+            return ajax
+                    ? "admin/subcategories/_form :: form"
+                    : "redirect:/admin/subcategories?modal=edit&id=" + id;
         }).orElseGet(() -> {
             ra.addFlashAttribute("error", "Subcategory not found.");
             return "redirect:/admin/subcategories";
@@ -117,21 +127,26 @@ public class AdminSubCategoryController extends AdminBaseController {
 
     // ── UPDATE POST ──────────────────────────────────────
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
+    public Object update(@PathVariable Long id,
                          @RequestParam String name,
                          @RequestParam Long categoryId,
                          @RequestParam(required = false) String sizeType,
                          @RequestParam(required = false) String slug,
-                         RedirectAttributes ra) {
+                         RedirectAttributes ra,
+                         HttpServletRequest request) {
+        boolean ajax = isAjax(request);
+        String back = "/admin/subcategories/" + id + "/edit";
+
         SubCategory existing = subCategoryService.getSubCategoryById(id).orElse(null);
         if (existing == null) {
-            ra.addFlashAttribute("error", "Subcategory not found.");
-            return "redirect:/admin/subcategories";
+            return fail(ajax, ra, "Subcategory not found.", "/admin/subcategories");
         }
         Category category = categoryService.getCategoryById(categoryId).orElse(null);
         if (category == null) {
-            ra.addFlashAttribute("error", "Invalid main category.");
-            return "redirect:/admin/subcategories/" + id + "/edit";
+            return fail(ajax, ra, "Invalid main category.", back);
+        }
+        if (name == null || name.isBlank()) {
+            return fail(ajax, ra, "Subcategory name cannot be empty.", back);
         }
 
         String finalSlug = (slug != null && !slug.isBlank())
@@ -140,8 +155,7 @@ public class AdminSubCategoryController extends AdminBaseController {
 
         if (!finalSlug.equals(existing.getSlug())
                 && subCategoryService.getBySlug(finalSlug).isPresent()) {
-            ra.addFlashAttribute("error", "Slug '" + finalSlug + "' already exists.");
-            return "redirect:/admin/subcategories/" + id + "/edit";
+            return fail(ajax, ra, "Slug '" + finalSlug + "' already exists.", back);
         }
 
         try {
@@ -153,11 +167,10 @@ public class AdminSubCategoryController extends AdminBaseController {
                             ? com.shop.clothingstore.entity.SizeType.valueOf(sizeType)
                             : null);
             subCategoryService.saveSubCategory(existing);
-            ra.addFlashAttribute("success", "Subcategory updated successfully!");
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error: " + e.getMessage());
+            return fail(ajax, ra, "Error: " + e.getMessage(), back);
         }
-        return "redirect:/admin/subcategories";
+        return ok(ajax, ra, "Subcategory updated successfully!", "/admin/subcategories");
     }
 
     // ── DELETE POST ──────────────────────────────────────

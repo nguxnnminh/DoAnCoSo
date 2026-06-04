@@ -17,6 +17,8 @@ import com.shop.clothingstore.entity.SubCategory;
 import com.shop.clothingstore.service.CategoryService;
 import com.shop.clothingstore.service.SubCategoryService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 @RequestMapping("/admin/categories")
 public class AdminCategoryController extends AdminBaseController {
@@ -41,31 +43,37 @@ public class AdminCategoryController extends AdminBaseController {
 
     // ── CREATE FORM ─────────────────────────────────────
     @GetMapping("/create")
-    public String createForm(Model model) {
+    public String createForm(Model model, HttpServletRequest request) {
         model.addAttribute("title", "Add Category");
         model.addAttribute("currentPage", "categories");
         if (!model.containsAttribute("category")) {
             model.addAttribute("category", new Category());
         }
-        return "admin/categories/create";
+        model.addAttribute("isEdit", false);
+        // Create/edit are modal-only now. AJAX gets the fragment; a direct
+        // (non-AJAX) hit just lands on the list, which opens the modal client-side.
+        return isAjax(request)
+                ? "admin/categories/_form :: form"
+                : "redirect:/admin/categories?modal=create";
     }
 
     // ── CREATE POST ──────────────────────────────────────
     @PostMapping("/create")
-    public String create(@RequestParam String name,
+    public Object create(@RequestParam String name,
                          @RequestParam(required = false) String slug,
-                         RedirectAttributes ra) {
+                         RedirectAttributes ra,
+                         HttpServletRequest request) {
+        boolean ajax = isAjax(request);
+
         if (name == null || name.isBlank()) {
-            ra.addFlashAttribute("error", "Category name cannot be empty.");
-            return "redirect:/admin/categories/create";
+            return fail(ajax, ra, "Category name cannot be empty.", "/admin/categories/create");
         }
         String finalSlug = (slug != null && !slug.isBlank())
                 ? slug.trim().toLowerCase()
                 : generateUniqueSlug(name);
 
         if (categoryService.getCategoryBySlug(finalSlug).isPresent()) {
-            ra.addFlashAttribute("error", "Slug '" + finalSlug + "' already exists.");
-            return "redirect:/admin/categories/create";
+            return fail(ajax, ra, "Slug '" + finalSlug + "' already exists.", "/admin/categories/create");
         }
 
         try {
@@ -73,21 +81,27 @@ public class AdminCategoryController extends AdminBaseController {
             c.setName(name.trim());
             c.setSlug(finalSlug);
             categoryService.saveCategory(c);
-            ra.addFlashAttribute("success", "Category '" + name.trim() + "' created successfully!");
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error: " + e.getMessage());
+            return fail(ajax, ra, "Error: " + e.getMessage(), "/admin/categories/create");
         }
-        return "redirect:/admin/categories";
+
+        String msg = "Category '" + name.trim() + "' created successfully!";
+        return ok(ajax, ra, msg, "/admin/categories");
     }
 
     // ── EDIT FORM ────────────────────────────────────────
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra) {
+    public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra,
+                           HttpServletRequest request) {
+        boolean ajax = isAjax(request);
         return categoryService.getCategoryById(id).map(c -> {
             model.addAttribute("title", "Edit Category");
             model.addAttribute("currentPage", "categories");
             model.addAttribute("category", c);
-            return "admin/categories/edit";
+            model.addAttribute("isEdit", true);
+            return ajax
+                    ? "admin/categories/_form :: form"
+                    : "redirect:/admin/categories?modal=edit&id=" + id;
         }).orElseGet(() -> {
             ra.addFlashAttribute("error", "Category not found.");
             return "redirect:/admin/categories";
@@ -96,18 +110,20 @@ public class AdminCategoryController extends AdminBaseController {
 
     // ── UPDATE POST ──────────────────────────────────────
     @PostMapping("/{id}")
-    public String update(@PathVariable Long id,
+    public Object update(@PathVariable Long id,
                          @RequestParam String name,
                          @RequestParam(required = false) String slug,
-                         RedirectAttributes ra) {
+                         RedirectAttributes ra,
+                         HttpServletRequest request) {
+        boolean ajax = isAjax(request);
+        String backUrl = "/admin/categories/" + id + "/edit";
+
         Category existing = categoryService.getCategoryById(id).orElse(null);
         if (existing == null) {
-            ra.addFlashAttribute("error", "Category not found.");
-            return "redirect:/admin/categories";
+            return fail(ajax, ra, "Category not found.", "/admin/categories");
         }
         if (name == null || name.isBlank()) {
-            ra.addFlashAttribute("error", "Category name cannot be empty.");
-            return "redirect:/admin/categories/" + id + "/edit";
+            return fail(ajax, ra, "Category name cannot be empty.", backUrl);
         }
 
         String finalSlug = (slug != null && !slug.isBlank())
@@ -115,22 +131,19 @@ public class AdminCategoryController extends AdminBaseController {
                 : toSlug(name);
 
         // Check uniqueness only if slug changed
-        if (!finalSlug.equals(existing.getSlug())) {
-            if (categoryService.getCategoryBySlug(finalSlug).isPresent()) {
-                ra.addFlashAttribute("error", "Slug '" + finalSlug + "' already exists.");
-                return "redirect:/admin/categories/" + id + "/edit";
-            }
+        if (!finalSlug.equals(existing.getSlug())
+                && categoryService.getCategoryBySlug(finalSlug).isPresent()) {
+            return fail(ajax, ra, "Slug '" + finalSlug + "' already exists.", backUrl);
         }
 
         try {
             existing.setName(name.trim());
             existing.setSlug(finalSlug);
             categoryService.saveCategory(existing);
-            ra.addFlashAttribute("success", "Category updated successfully!");
         } catch (Exception e) {
-            ra.addFlashAttribute("error", "Error: " + e.getMessage());
+            return fail(ajax, ra, "Error: " + e.getMessage(), backUrl);
         }
-        return "redirect:/admin/categories";
+        return ok(ajax, ra, "Category updated successfully!", "/admin/categories");
     }
 
     // ── DELETE POST ──────────────────────────────────────

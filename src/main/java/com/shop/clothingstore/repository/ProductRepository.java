@@ -89,6 +89,7 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     SELECT DISTINCT p
     FROM Product p
     LEFT JOIN FETCH p.productVariants
+    LEFT JOIN FETCH p.images
     WHERE p.id = :id
 """)
     Optional<Product> findProductForEdit(@Param("id") Long id);

@@ -30,6 +30,7 @@ import com.shop.clothingstore.service.ProductService;
 import com.shop.clothingstore.service.SubCategoryService;
 import com.shop.clothingstore.service.TryOnService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 @Controller
@@ -141,7 +142,7 @@ public class AdminProductController extends AdminBaseController {
     // SHOW CREATE FORM
     // ===============================
     @GetMapping("/create")
-    public String showCreateForm(Model model) {
+    public String showCreateForm(Model model, HttpServletRequest request) {
 
         model.addAttribute("title", "Add Product");
 
@@ -151,27 +152,30 @@ public class AdminProductController extends AdminBaseController {
 
         model.addAttribute("categories", categoryService.getAllCategories());
 
-        return "admin/products/create";
+        return isAjax(request)
+                ? "admin/products/_create_form :: form"
+                : "redirect:/admin/products?modal=create&wide=1";
     }
 
     // ===============================
     // CREATE PRODUCT
     // ===============================
     @PostMapping("/create")
-    public String createProduct(
+    public Object createProduct(
             @Valid @ModelAttribute("productDTO") ProductCreateDTO dto,
             BindingResult result,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
+
+        boolean ajax = isAjax(request);
 
         if (result.hasErrors()) {
-
-            redirectAttributes.addFlashAttribute(
-                    "org.springframework.validation.BindingResult.productDTO",
-                    result);
-
-            redirectAttributes.addFlashAttribute("productDTO", dto);
-
-            return "redirect:/admin/products/create";
+            if (!ajax) {
+                ra.addFlashAttribute(
+                        "org.springframework.validation.BindingResult.productDTO", result);
+                ra.addFlashAttribute("productDTO", dto);
+            }
+            return fail(ajax, ra, firstError(result), "/admin/products/create");
         }
 
         try {
@@ -183,18 +187,18 @@ public class AdminProductController extends AdminBaseController {
                 tryOnService.updateTryOnSettings(created.getId(), true,
                         dto.getGarmentImage(), parseGarmentType(dto.getGarmentType()));
             }
-
-            redirectAttributes.addFlashAttribute(
-                    "success",
-                    "Product created successfully!");
         } catch (IOException e) {
-            redirectAttributes.addFlashAttribute(
-                    "error",
-                    "Image upload failed.");
-            return "redirect:/admin/products/create";
+            return fail(ajax, ra, "Image upload failed.", "/admin/products/create");
         }
 
-        return "redirect:/admin/products";
+        return ok(ajax, ra, "Product created successfully!", "/admin/products");
+    }
+
+    /** First validation error message, or a generic fallback. */
+    private static String firstError(BindingResult result) {
+        return result.getFieldError() != null && result.getFieldError().getDefaultMessage() != null
+                ? result.getFieldError().getDefaultMessage()
+                : "Please check the form and try again.";
     }
 
     // ===============================
@@ -226,8 +230,10 @@ public class AdminProductController extends AdminBaseController {
     public String showEditForm(
             @PathVariable Long id,
             Model model,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
         try {
 
             model.addAttribute("title", "Edit Product");
@@ -269,7 +275,9 @@ public class AdminProductController extends AdminBaseController {
             model.addAttribute("selectedCategoryId",
                     product.getSubCategory().getCategory().getId());
 
-            return "admin/products/edit";
+            return ajax
+                    ? "admin/products/_edit_form :: form"
+                    : "redirect:/admin/products?modal=edit&id=" + id + "&wide=1";
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute(
@@ -283,25 +291,27 @@ public class AdminProductController extends AdminBaseController {
     // UPDATE PRODUCT
     // ===============================
     @PostMapping("/{id}")
-    public String updateProduct(
+    public Object updateProduct(
             @PathVariable Long id,
             @Valid @ModelAttribute("productDTO") ProductUpdateDTO dto,
             BindingResult result,
             @RequestParam(required = false) List<Long> imagesToDelete,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
+
+        boolean ajax = isAjax(request);
+        String back = "/admin/products/" + id + "/edit";
 
         dto.setId(id);
         dto.setImagesToDelete(imagesToDelete != null ? imagesToDelete : new ArrayList<>());
 
         if (result.hasErrors()) {
-
-            redirectAttributes.addFlashAttribute(
-                    "org.springframework.validation.BindingResult.productDTO",
-                    result);
-
-            redirectAttributes.addFlashAttribute("productDTO", dto);
-
-            return "redirect:/admin/products/" + id + "/edit";
+            if (!ajax) {
+                ra.addFlashAttribute(
+                        "org.springframework.validation.BindingResult.productDTO", result);
+                ra.addFlashAttribute("productDTO", dto);
+            }
+            return fail(ajax, ra, firstError(result), back);
         }
 
         try {
@@ -316,20 +326,12 @@ public class AdminProductController extends AdminBaseController {
                         parseGarmentType(dto.getGarmentType()));
             } catch (IllegalStateException tryOnEx) {
                 // e.g. enabled Try-On without ever providing a garment image
-                redirectAttributes.addFlashAttribute("error", tryOnEx.getMessage());
-                return "redirect:/admin/products/" + id + "/edit";
+                return fail(ajax, ra, tryOnEx.getMessage(), back);
             }
-
-            redirectAttributes.addFlashAttribute(
-                    "success",
-                    "Product updated successfully!");
         } catch (IOException e) {
-            redirectAttributes.addFlashAttribute(
-                    "error",
-                    "Image processing failed.");
-            return "redirect:/admin/products/" + id + "/edit";
+            return fail(ajax, ra, "Image processing failed.", back);
         }
 
-        return "redirect:/admin/products";
+        return ok(ajax, ra, "Product updated successfully!", "/admin/products");
     }
 }

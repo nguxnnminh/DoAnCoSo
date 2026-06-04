@@ -18,6 +18,8 @@ import com.shop.clothingstore.exception.InvalidOrderStateException;
 import com.shop.clothingstore.service.OrderService;
 import com.shop.clothingstore.service.ShipmentService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 public class AdminOrderController extends AdminBaseController {
 
@@ -67,10 +69,12 @@ public class AdminOrderController extends AdminBaseController {
     public String orderDetail(
             @PathVariable Long id,
             Model model,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
         try {
-            Order order = orderService.findById(id)
+            Order order = orderService.findByIdWithItems(id)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
 
             Shipment shipment = shipmentService.findByOrder(order).orElse(null);
@@ -83,7 +87,9 @@ public class AdminOrderController extends AdminBaseController {
                 OrderStatus.PENDING, OrderStatus.PROCESSING, OrderStatus.SHIPPING, OrderStatus.COMPLETED
             });
 
-            return "admin/orders/show";
+            return ajax
+                    ? "admin/orders/_detail :: detail"
+                    : "redirect:/admin/orders?modal=order&id=" + id + "&wide=1";
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Order not found.");
@@ -95,61 +101,64 @@ public class AdminOrderController extends AdminBaseController {
     // UPDATE STATUS
     // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/status")
-    public String updateStatus(
+    public Object updateStatus(
             @PathVariable Long id,
             @RequestParam OrderStatus status,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
+        String back = "/admin/orders/" + id;
         try {
             orderService.updateOrderStatus(id, status);
-            redirectAttributes.addFlashAttribute("success", "Order status updated successfully!");
-
         } catch (InvalidOrderStateException | IllegalStateException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-
+            return fail(ajax, ra, e.getMessage(), back);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "System error. Please try again.");
+            return fail(ajax, ra, "System error. Please try again.", back);
         }
-
-        return "redirect:/admin/orders/" + id;
+        return ok(ajax, ra, "Order status updated successfully!", back);
     }
 
     // ─────────────────────────────────────────────────────────
     // ACCEPT CANCEL REQUEST → CANCELLED + stock restored
     // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/cancel-accept")
-    public String acceptCancel(
+    public Object acceptCancel(
             @PathVariable Long id,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
+        String back = "/admin/orders/" + id;
         try {
             orderService.acceptCancelRequest(id);
-            redirectAttributes.addFlashAttribute("success", "Cancellation request accepted. Order cancelled.");
         } catch (IllegalStateException | IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return fail(ajax, ra, e.getMessage(), back);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "System error. Please try again.");
+            return fail(ajax, ra, "System error. Please try again.", back);
         }
-        return "redirect:/admin/orders/" + id;
+        return ok(ajax, ra, "Cancellation request accepted. Order cancelled.", back);
     }
 
     // ─────────────────────────────────────────────────────────
     // DENY CANCEL REQUEST → back to PROCESSING
     // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/cancel-deny")
-    public String denyCancel(
+    public Object denyCancel(
             @PathVariable Long id,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
+        String back = "/admin/orders/" + id;
         try {
             orderService.denyCancelRequest(id);
-            redirectAttributes.addFlashAttribute("success", "Cancellation request denied. Order continues processing.");
         } catch (IllegalStateException | IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return fail(ajax, ra, e.getMessage(), back);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "System error. Please try again.");
+            return fail(ajax, ra, "System error. Please try again.", back);
         }
-        return "redirect:/admin/orders/" + id;
+        return ok(ajax, ra, "Cancellation request denied. Order continues processing.", back);
     }
 
     // ─────────────────────────────────────────────────────────

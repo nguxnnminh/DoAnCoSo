@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,7 +24,16 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
     // =====================================================
     List<Order> findByActor(User actor);
 
+    // Eager-load items: rendered by my-orders.html (item count) with OSIV disabled.
+    @EntityGraph(attributePaths = "items")
     List<Order> findByActorOrderByCreatedAtDesc(User actor);
+
+    // Single order with its items + actor — rendered by order-detail.html /
+    // admin orders detail. actor is fetched too because the admin modal shows
+    // the customer's email (order.actor.email) and OSIV is disabled.
+    @EntityGraph(attributePaths = {"items", "actor"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findByIdWithItems(@Param("id") Long id);
 
     Page<Order> findByActorOrderByCreatedAtDesc(User actor, Pageable pageable);
 
@@ -48,6 +59,8 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
     Page<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status, Pageable pageable);
 
     // Admin: combined search — keyword (name/phone) + optional order ID + status + date range
+    // actor fetched: the list template shows o.actor.email / fullName (OSIV off).
+    @EntityGraph(attributePaths = "actor")
     @Query("""
         SELECT o FROM Order o
         WHERE (:keyword IS NULL
@@ -91,6 +104,8 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
             @Param("endDate") LocalDateTime endDate
     );
 
+    // actor fetched: dashboard "latest transactions" renders o.actor.fullName (OSIV off).
+    @EntityGraph(attributePaths = "actor")
     List<Order> findTop5ByOrderByCreatedAtDesc();
 
     @Query("""

@@ -9,6 +9,86 @@
 
 ---
 
+### [2026-06-04] Test: phủ MockMvc cho toàn bộ controller shop
+
+**BEFORE:**
+- Chỉ có unit test service (Checkout/Coupon/Order/Product/Referral) + 3 API controller test. Các controller web shop (cart, checkout, order, review, profile, coupon, shop, wishlist) chưa có test.
+
+**AFTER:**
+- Thêm 8 lớp test web controller dùng `MockMvcBuilders.standaloneSetup(...)` (cô lập controller, ViewResolver stub, không render layout thật, không boot full context).
+- Phủ mọi UC shop: view-name + model, redirect, flash message, validate server-side, phân quyền (guard login / ownership).
+- Tổng test suite: **125 test, 0 fail**. Không phát hiện lỗi backend — mọi controller shop hoạt động đúng.
+
+**Files (mới):**
+- `src/test/java/.../controller/CartControllerTest.java` (9)
+- `.../WishlistWebControllerTest.java` (4)
+- `.../CheckoutControllerTest.java` (8)
+- `.../OrderControllerTest.java` (10)
+- `.../ReviewControllerTest.java` (3)
+- `.../ProfileControllerTest.java` (7)
+- `.../CouponControllerTest.java` (3)
+- `.../ShopControllerTest.java` (8)
+
+**Lý do:**
+Bảo vệ hành vi controller shop sau đợt refactor modal/OSIV; standalone giữ test nhanh & ổn định (không phụ thuộc `_csrf`/security dialect của layout).
+
+---
+
+### [2026-06-04] Admin UI: chuyển toàn bộ create/edit/detail sang modal (AJAX)
+
+**BEFORE:**
+- Mỗi thao tác Thêm/Sửa/Xem chi tiết của admin mở một **trang riêng** (`create.html`, `edit.html`, `orders/show.html`) — điều hướng rời danh sách, mất ngữ cảnh.
+- Form submit theo kiểu redirect + flash message (nhảy trang).
+
+**AFTER:**
+- Bấm **Add New / Edit / View** → JS nạp **fragment form** từ server qua AJAX → hiện trong **modal làm mờ nền**, không rời trang danh sách.
+- Submit qua AJAX (`fetch` + `FormData`, giữ upload ảnh): thành công → đóng modal + toast + tự refresh bảng; lỗi → banner đỏ trong modal, giữ nguyên dữ liệu đang nhập.
+- Áp dụng cho **6 module**: categories, subcategories, coupons, users, products (modal rộng + gallery kéo-thả + try-on), orders (xem chi tiết + đổi trạng thái / duyệt huỷ).
+- Controller phát hiện AJAX qua header `X-Requested-With`:
+  - GET create/edit/detail → trả **fragment** (`_form :: form` / `_detail :: detail`); non-AJAX → redirect `?modal=...` để client tự mở.
+  - POST → trả **JSON** `{ok:true,message}` / `{ok:false,error}` khi AJAX; vẫn giữ luồng redirect+flash cũ khi không.
+- Helper dùng chung trong `AdminBaseController`: `isAjax()`, `ok()`, `fail()`.
+- Đã **xóa** toàn bộ trang riêng cũ: `categories/{create,edit}.html`, `subcategories/{create,edit}.html`, `coupons/{create,edit}.html`, `users/{create,edit}.html`, `products/{create,edit}.html`, `orders/show.html`.
+
+**Files:**
+- `static/js/admin-modal.js` (tạo mới — fetch fragment, open/close, submit AJAX, toast, auto-open từ `?modal=`)
+- `static/js/admin-spa.js` (bỏ qua link `data-modal`; expose `adminSpaReload()`)
+- `templates/layout/admin.html` (CSS `.modal-box--form` + container `#ajaxModal` + nạp `admin-modal.js`)
+- `templates/admin/*/index.html` (gắn `data-modal` / `data-modal-wide`)
+- `templates/admin/categories/_form.html`, `subcategories/_form.html`, `coupons/_form.html`, `users/_form.html`, `products/_create_form.html`, `products/_edit_form.html`, `orders/_detail.html` (fragment mới)
+- `controller/admin/AdminBaseController.java` (+isAjax/ok/fail)
+- `controller/admin/Admin{Category,SubCategory,Coupon,User,Product,Order}Controller.java`
+
+**Lý do:**
+Trải nghiệm mượt như SPA — thao tác CRUD không nhảy trang, giữ vị trí cuộn và bộ lọc của danh sách.
+
+---
+
+### [2026-06-04] Fix cạn HikariCP connection pool do OSIV + SSE
+
+**BEFORE:**
+- `spring.jpa.open-in-view` để mặc định (bật). Mỗi kết nối SSE `/notifications/stream` (sống tối đa 30 phút) **giữ một JDBC connection** suốt vòng đời stream.
+- Vài tab mở là cạn pool mặc định 10 connection → toàn bộ request (kể cả Spring Session `findById`) timeout `Connection is not available`.
+
+**AFTER:**
+- `spring.jpa.open-in-view=false` — không pin connection cho request bất đồng bộ.
+- `maximum-pool-size=20`, `minimum-idle=5`, `leak-detection-threshold=30000`.
+- Các trang server-render dùng lazy association nay **fetch tường minh** qua `@EntityGraph` / `JOIN FETCH` để tránh `LazyInitializationException` khi OSIV tắt:
+  - `OrderRepository`: `findByActorOrderByCreatedAtDesc` (+items), `findByIdWithItems` (mới, +items +actor), `findTop5ByOrderByCreatedAtDesc` (+actor, dashboard), `searchAdmin` (+actor, admin list)
+  - `ReviewRepository.findAllByItemIdOrderByCreatedAtDesc` (+imageUrls +actor, review ở product detail)
+  - `WishlistItemRepository.findByUser` (+product, +product.images)
+  - `ProductRepository.findProductForEdit` (+images)
+- Verify chạy thật: order detail (modal) · admin orders list · dashboard · product detail · my-orders · wishlist · home → hết `LazyInitializationException`.
+
+**Files:**
+- `resources/application.properties`
+- `repository/OrderRepository.java`, `repository/WishlistItemRepository.java`, `repository/ProductRepository.java`
+
+**Lý do:**
+OSIV là anti-pattern (chính Spring cảnh báo); kết hợp SSE giữ kết nối lâu là nguyên nhân trực tiếp gây cạn pool.
+
+---
+
 ### [2026-06-02] Viết lại toàn bộ tài liệu từ code
 
 **BEFORE:**

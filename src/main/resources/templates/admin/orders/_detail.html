@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!-- Modal fragment: order detail (view + status actions). Loaded wide. -->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div data-modal-content th:fragment="detail">
+
+    <div class="modal-form-header">
+        <div>
+            <h2>Order <span style="font-family:'DM Mono',monospace;" th:text="'#' + ${order.id}">#0</span></h2>
+            <p th:text="'Placed at ' + ${#temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm')}">…</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span class="badge" style="font-size:13px; padding:6px 14px;" th:classappend="${order.status?.name() == 'PENDING'           ? ' badge-yellow' :
+                                   order.status?.name() == 'PROCESSING'        ? ' badge-blue'   :
+                                   order.status?.name() == 'SHIPPING'          ? ' badge-indigo' :
+                                   order.status?.name() == 'COMPLETED'         ? ' badge-green'  :
+                                   order.status?.name() == 'CANCEL_REQUESTED'  ? ' badge-yellow' : ' badge-red'}"
+                th:text="${order.status}">STATUS</span>
+            <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-form-body">
+        <div class="g-sidebar">
+
+            <!-- LEFT: ITEMS -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <div class="card">
+                    <div class="card-header">
+                        <span style="font-size:14px; font-weight:600;">
+                            Order Items (<span th:text="${order.items?.size() ?: 0}">0</span>)
+                        </span>
+                    </div>
+                    <div>
+                        <div th:each="item : ${order.items}"
+                            style="display:flex; justify-content:space-between; align-items:flex-start; padding:16px 20px; border-bottom:1px solid #f9fafb;">
+                            <div style="flex:1;">
+                                <div style="font-weight:500; margin-bottom:4px;" th:text="${item.productName}"></div>
+                                <div style="font-size:12px; color:#9ca3af;">
+                                    <span class="badge badge-gray" style="margin-right:4px;" th:text="'Size: ' + ${item.size}"></span>
+                                    <span class="badge badge-gray" th:text="'Color: ' + ${item.color}"></span>
+                                </div>
+                            </div>
+                            <div style="text-align:right; flex-shrink:0; margin-left:16px;">
+                                <div style="font-weight:600;">
+                                    <span th:text="${item.price != null ? #numbers.formatDecimal(item.price,0,'POINT',0,'COMMA') : '—'}"></span>₫
+                                </div>
+                                <div style="font-size:12px; color:#9ca3af; margin-top:2px;" th:text="'x' + ${item.quantity}"></div>
+                            </div>
+                        </div>
+                        <div style="padding:16px 20px; background:#f9fafb; display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:14px; font-weight:600;">Order Total</span>
+                            <span style="font-size:20px; font-weight:700; letter-spacing:-0.5px;">
+                                <span th:text="${order.total != null ? #numbers.formatDecimal(order.total,0,'POINT',0,'COMMA') : '—'}"></span>₫
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: INFO + STATUS -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+
+                <div class="card" style="padding:20px;">
+                    <div class="section-title">Order Information</div>
+                    <div style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                            <span style="font-size:12px; color:#9ca3af; flex-shrink:0;">Customer</span>
+                            <span style="font-size:13px; font-weight:500; text-align:right;"
+                                th:text="${order.customerName ?: (order.actor?.fullName ?: 'Guest')}"></span>
+                        </div>
+                        <div th:if="${order.actor != null}" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                            <span style="font-size:12px; color:#9ca3af; flex-shrink:0;">Email</span>
+                            <span style="font-size:13px; text-align:right;" th:text="${order.actor?.email}"></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                            <span style="font-size:12px; color:#9ca3af; flex-shrink:0;">Phone</span>
+                            <span style="font-size:13px; font-weight:500;" th:text="${order.phone ?: '—'}"></span>
+                        </div>
+                        <div class="divider" style="margin:4px 0;"></div>
+                        <div>
+                            <span style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px;">Shipping Address</span>
+                            <span style="font-size:13px; line-height:1.5;" th:text="${order.address ?: '—'}"></span>
+                        </div>
+                        <div th:if="${order.note != null and !order.note.isEmpty()}">
+                            <span style="font-size:12px; color:#9ca3af; display:block; margin-bottom:4px;">Note</span>
+                            <span style="font-size:13px; color:#6b7280; font-style:italic;" th:text="${order.note}"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CANCEL REQUEST -->
+                <div th:if="${order.status?.name() == 'CANCEL_REQUESTED'}"
+                    style="padding:20px; border-radius:10px; background:#fffbeb; border:1px solid #fde68a;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                        <svg width="18" height="18" fill="none" stroke="#d97706" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span style="font-size:14px; font-weight:600; color:#92400e;">Cancellation Requested</span>
+                    </div>
+                    <div th:if="${order.cancelReason != null and !order.cancelReason.isEmpty()}"
+                        style="background:#fef3c7; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:13px; color:#78350f;">
+                        <span style="font-weight:500;">Customer reason: </span><span th:text="${order.cancelReason}"></span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <form data-modal-form th:action="@{/admin/orders/{id}/cancel-accept(id=${order.id})}" method="post" style="flex:1;">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn btn-secondary" style="width:100%; justify-content:center; background:#dc2626; color:white; border-color:#dc2626;">Accept</button>
+                        </form>
+                        <form data-modal-form th:action="@{/admin/orders/{id}/cancel-deny(id=${order.id})}" method="post" style="flex:1;">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Deny &amp; Resume</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- UPDATE STATUS -->
+                <div class="card" style="padding:20px;"
+                    th:if="${order.status?.name() != 'COMPLETED' and order.status?.name() != 'CANCELLED' and order.status?.name() != 'CANCEL_REQUESTED'}">
+                    <div class="section-title">Update Status</div>
+                    <form data-modal-form th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <div style="margin-bottom:12px;">
+                            <label class="form-label">New Status</label>
+                            <select name="status" class="form-control">
+                                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"
+                                    th:selected="${s == order.status}"
+                                    th:disabled="${
+                                        s.name() == 'CANCEL_REQUESTED' or
+                                        (order.status?.name() == 'SHIPPING'   and !(s.name() == 'SHIPPING'   or s.name() == 'COMPLETED'  or s.name() == 'CANCELLED')) or
+                                        (order.status?.name() == 'PROCESSING' and !(s.name() == 'PROCESSING' or s.name() == 'SHIPPING'   or s.name() == 'CANCELLED')) or
+                                        (order.status?.name() == 'PENDING'    and !(s.name() == 'PENDING'    or s.name() == 'PROCESSING' or s.name() == 'CANCELLED'))
+                                    }"></option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Update Status</button>
+                    </form>
+                </div>
+
+                <!-- COMPLETED -->
+                <div th:if="${order.status?.name() == 'COMPLETED'}"
+                    style="padding:16px; border-radius:10px; background:#f0fdf4; border:1px solid #bbf7d0; display:flex; align-items:center; gap:10px;">
+                    <svg width="18" height="18" fill="none" stroke="#16a34a" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span style="font-size:13px; font-weight:500; color:#15803d;">Order completed successfully</span>
+                </div>
+
+                <!-- CANCELLED -->
+                <div th:if="${order.status?.name() == 'CANCELLED'}"
+                    style="padding:16px; border-radius:10px; background:#fff1f2; border:1px solid #fecdd3; display:flex; align-items:center; gap:10px;">
+                    <svg width="18" height="18" fill="none" stroke="#e11d48" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span style="font-size:13px; font-weight:500; color:#be123c;">Order has been cancelled</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

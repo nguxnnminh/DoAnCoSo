@@ -13,7 +13,7 @@
         </div>
         <div class="module-tabs">
             <a th:href="@{/admin/products}" class="module-tab active">List</a>
-            <a th:href="@{/admin/products/create}" class="module-tab">Add New</a>
+            <a th:href="@{/admin/products/create}" class="module-tab" data-modal data-modal-wide>Add New</a>
         </div>
     </div>
 
@@ -134,7 +134,7 @@
                         <td>
                             <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                                 <a th:href="@{/admin/products/{id}/edit(id=${product.id})}"
-                                   class="btn btn-sm btn-secondary">Edit</a>
+                                   class="btn btn-sm btn-secondary" data-modal data-modal-wide>Edit</a>
 
                                 <form th:action="@{/admin/products/{id}(id=${product.id})}" method="post" style="display:inline;">
                                     <input type="hidden" name="_method" value="DELETE"/>

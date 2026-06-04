@@ -18,6 +18,8 @@ import com.shop.clothingstore.entity.Role;
 import com.shop.clothingstore.entity.User;
 import com.shop.clothingstore.service.UserService;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Controller
 @RequestMapping("/admin/users")
 public class AdminUserController extends AdminBaseController {
@@ -61,7 +63,7 @@ public class AdminUserController extends AdminBaseController {
     }
 
     @GetMapping("/create")
-    public String showCreateForm(Model model) {
+    public String showCreateForm(Model model, HttpServletRequest request) {
         model.addAttribute("title", "Add User");
         if (!model.containsAttribute("user")) {
             User user = new User();
@@ -69,30 +71,34 @@ public class AdminUserController extends AdminBaseController {
             model.addAttribute("user", user);
         }
         model.addAttribute("roles", Role.values());
-        return "admin/users/create";
+        model.addAttribute("isEdit", false);
+        return isAjax(request)
+                ? "admin/users/_form :: form"
+                : "redirect:/admin/users?modal=create";
     }
 
     @PostMapping("/create")
-    public String createUser(
+    public Object createUser(
             @ModelAttribute("user") User user,
             @RequestParam String password,
             @RequestParam String confirmPassword,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
+
+        boolean ajax = isAjax(request);
+        String back = "/admin/users/create";
 
         if (user.getEmail() == null || user.getEmail().isBlank()) {
-            redirectAttributes.addFlashAttribute("error", "Email is required.");
-            redirectAttributes.addFlashAttribute("user", user);
-            return "redirect:/admin/users/create";
+            if (!ajax) ra.addFlashAttribute("user", user);
+            return fail(ajax, ra, "Email is required.", back);
         }
         if (password == null || password.length() < 8) {
-            redirectAttributes.addFlashAttribute("error", "Password must be at least 8 characters.");
-            redirectAttributes.addFlashAttribute("user", user);
-            return "redirect:/admin/users/create";
+            if (!ajax) ra.addFlashAttribute("user", user);
+            return fail(ajax, ra, "Password must be at least 8 characters.", back);
         }
         if (!password.equals(confirmPassword)) {
-            redirectAttributes.addFlashAttribute("error", "Passwords do not match.");
-            redirectAttributes.addFlashAttribute("user", user);
-            return "redirect:/admin/users/create";
+            if (!ajax) ra.addFlashAttribute("user", user);
+            return fail(ajax, ra, "Passwords do not match.", back);
         }
 
         try {
@@ -103,17 +109,14 @@ public class AdminUserController extends AdminBaseController {
                     user.getFullName(),
                     user.getPhone(),
                     user.getAddress());
-            redirectAttributes.addFlashAttribute("success", "User created successfully!");
-            return "redirect:/admin/users";
         } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            redirectAttributes.addFlashAttribute("user", user);
-            return "redirect:/admin/users/create";
+            if (!ajax) ra.addFlashAttribute("user", user);
+            return fail(ajax, ra, e.getMessage(), back);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Cannot create user.");
-            redirectAttributes.addFlashAttribute("user", user);
-            return "redirect:/admin/users/create";
+            if (!ajax) ra.addFlashAttribute("user", user);
+            return fail(ajax, ra, "Cannot create user.", back);
         }
+        return ok(ajax, ra, "User created successfully!", "/admin/users");
     }
 
     // ─────────────────────────────────────────────────────────
@@ -123,8 +126,10 @@ public class AdminUserController extends AdminBaseController {
     public String showEditForm(
             @PathVariable Long id,
             Model model,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
         try {
             User user = userService.findById(id)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -132,8 +137,11 @@ public class AdminUserController extends AdminBaseController {
             model.addAttribute("title", "Edit User");
             model.addAttribute("user",  user);
             model.addAttribute("roles", Role.values());
+            model.addAttribute("isEdit", true);
 
-            return "admin/users/edit";
+            return ajax
+                    ? "admin/users/_form :: form"
+                    : "redirect:/admin/users?modal=edit&id=" + id;
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "User not found.");
@@ -145,20 +153,19 @@ public class AdminUserController extends AdminBaseController {
     // UPDATE
     // ─────────────────────────────────────────────────────────
     @PostMapping("/{id}")
-    public String updateUser(
+    public Object updateUser(
             @PathVariable Long id,
             @ModelAttribute User updatedUser,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes ra,
+            HttpServletRequest request) {
 
+        boolean ajax = isAjax(request);
         try {
             userService.updateUser(id, updatedUser);
-            redirectAttributes.addFlashAttribute("success", "User updated successfully!");
-
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Update failed: " + e.getMessage());
+            return fail(ajax, ra, "Update failed: " + e.getMessage(), "/admin/users/" + id + "/edit");
         }
-
-        return "redirect:/admin/users";
+        return ok(ajax, ra, "User updated successfully!", "/admin/users");
     }
 
     // ─────────────────────────────────────────────────────────

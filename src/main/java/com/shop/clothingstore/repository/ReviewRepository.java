@@ -3,6 +3,7 @@ package com.shop.clothingstore.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,6 +28,10 @@ public interface ReviewRepository extends BaseRepository<Review, Long> {
     """)
     long countByItemId(@Param("itemId") Long itemId);
 
+    // Eager-load imageUrls + actor: product-detail.html renders review attachment
+    // thumbnails (review.imageUrls) and the author name (review.actor.fullName)
+    // with open-session-in-view disabled.
+    @EntityGraph(attributePaths = {"imageUrls", "actor"})
     @Query("""
         SELECT r
         FROM Review r

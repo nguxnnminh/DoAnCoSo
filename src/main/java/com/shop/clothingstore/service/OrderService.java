@@ -213,6 +213,12 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return orderRepository.findByActorOrderByCreatedAtDesc(user);
     }
 
+    // Read path for order detail pages: eager-loads items so the view can render
+    // line items after the transaction closes (open-session-in-view is disabled).
+    public java.util.Optional<Order> findByIdWithItems(Long orderId) {
+        return orderRepository.findByIdWithItems(orderId);
+    }
+
     // =====================================================
     // USER: Self-cancel (PENDING only, authenticated)
     // Stock is restored via the standard CANCELLED path.
