@@ -99,7 +99,7 @@
 |---|---|---|---|
 | Duyệt/tìm sản phẩm, chi tiết, gợi ý | ✓ | ✓ | ✓ |
 | Giỏ hàng (session-based) | ✓ | ✓ | ✓ |
-| AI Chatbot · Virtual Try-On | ✓ | ✓ | ✓ |
+| AI Chatbot · Virtual Try-On | ✓ | ✗ | ✓ |
 | Kiểm tra coupon công khai (`/api/coupons/validate`) | ✓ | ✓ | ✓ |
 | **Đặt hàng (checkout COD)** | ✓ — đơn không gắn tài khoản (`actor=null`) | ✗ — bị ép `/login` | ✓ — đơn gắn tài khoản |
 | Coupon đề xuất ở checkout (`/api/coupons/available`) | rỗng | rỗng | ✓ |
