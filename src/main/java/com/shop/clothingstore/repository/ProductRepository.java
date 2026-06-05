@@ -18,10 +18,8 @@ import com.shop.clothingstore.repository.base.BaseRepository;
 public interface ProductRepository extends BaseRepository<Product, Long> {
 
     /*
-     * =====================================================
      * PRODUCT DETAIL BY ID
      * Load đầy đủ dữ liệu tránh N+1 query
-     * =====================================================
      */
     @Override
     @EntityGraph(attributePaths = {
@@ -33,12 +31,9 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     @NonNull
     Optional<Product> findById(@NonNull Long id);
 
-
     /*
-     * =====================================================
      * PRODUCT DETAIL BY SLUG
      * Dùng cho trang product detail ngoài shop
-     * =====================================================
      */
     @EntityGraph(attributePaths = {
         "productVariants",
@@ -48,20 +43,14 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     })
     Optional<Product> findBySlug(String slug);
 
-
     /*
-     * =====================================================
      * SIMPLE SEARCH
-     * =====================================================
      */
     Optional<Product> findByName(String name);
 
-
     /*
-     * =====================================================
      * TOP PRODUCTS BY CATEGORY
      * Sắp xếp theo variant bán nhiều nhất
-     * =====================================================
      */
     @Query("""
     SELECT p
@@ -78,12 +67,9 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
             Pageable pageable
     );
 
-
     /*
-     * =====================================================
      * PRODUCT FOR EDIT (ADMIN)
      * Load variants + images để edit
-     * =====================================================
      */
     @Query("""
     SELECT DISTINCT p
@@ -94,12 +80,9 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
 """)
     Optional<Product> findProductForEdit(@Param("id") Long id);
 
-
     /*
-     * =====================================================
      * ADMIN LIST WITH RELATIONS
      * Tránh N+1 khi hiển thị danh sách sản phẩm
-     * =====================================================
      */
     @Override
     @EntityGraph(attributePaths = {
@@ -110,13 +93,11 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     Page<Product> findAll(@NonNull Pageable pageable);
 
     /*
-     * =====================================================
      * PRODUCT LIST WITH SPECIFICATION + ENTITYGRAPH
      * Tránh N+1 khi dùng filter API (shop + admin).
      * productVariants included so product.getTotalStock()
      * doesn't trigger a lazy SELECT per product in admin.
      * Hibernate fetches variants in one batch SELECT, not N.
-     * =====================================================
      */
     @Override
     @EntityGraph(attributePaths = {
@@ -128,13 +109,11 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     @NonNull
     Page<Product> findAll(@Nullable Specification<Product> spec, @NonNull Pageable pageable);
 
-    // =====================================================
     // RECOMMENDATION QUERIES
     // EntityGraph fetches images + subCategory eagerly so the product-detail
     // template does NOT trigger lazy loads for each related product card.
     // productVariants are NOT fetched here — use product.minPrice in templates.
-    // =====================================================
-    @EntityGraph(attributePaths = {"images", "subCategory", "subCategory.category"})
+    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     @Query("""
         SELECT p FROM Product p
         WHERE p.subCategory.id = :subCategoryId
@@ -147,7 +126,7 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
             @Param("excludeId") Long excludeId,
             Pageable pageable);
 
-    @EntityGraph(attributePaths = {"images", "subCategory", "subCategory.category"})
+    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     @Query("""
         SELECT p FROM Product p
         WHERE p.subCategory.category.id = :categoryId
@@ -160,12 +139,17 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
             @Param("excludeId") Long excludeId,
             Pageable pageable);
 
+    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     @Query("""
         SELECT DISTINCT v.product FROM ProductVariant v
         WHERE v.id = :variantId
     """)
     java.util.Optional<Product> findByVariantId(@Param("variantId") Long variantId);
 
+    // EntityGraph fetch images + productVariants để map ProductResponse.summary()
+    // (getTotalStock duyệt productVariants) và chatbot (distinctColors) không bị
+    // LazyInitializationException khi OSIV tắt và map DTO ngoài transaction.
+    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     @Query("""
         SELECT p FROM Product p
         WHERE p.active = true
@@ -173,13 +157,10 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     """)
     List<Product> findBestSellers(Pageable pageable);
 
-
     /*
-     * =====================================================
      * BEST SELLER PER CATEGORY (HOME PAGE)
      * Lấy 1 sản phẩm bán chạy nhất theo slug category
      * EntityGraph tránh N+1 cho images + subCategory
-     * =====================================================
      */
     @EntityGraph(attributePaths = {"images", "subCategory", "subCategory.category"})
     @Query("""
@@ -190,19 +171,15 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     """)
     List<Product> findBestSellerByCategorySlug(@Param("slug") String slug, Pageable pageable);
 
-    // =====================================================
     // ANALYTICS: alias findBestSellers — dùng chung 1 query
-    // =====================================================
     default List<Product> findTopSellingProducts(Pageable pageable) {
         return findBestSellers(pageable);
     }
 
-    // =====================================================
     // FULL-TEXT SEARCH (MySQL/MariaDB FULLTEXT)
     // Trả về danh sách ID sản phẩm khớp, xếp theo độ liên quan (relevance).
     // Dùng BOOLEAN MODE để hỗ trợ tiền tố (q*). Service sẽ fallback LIKE nếu
     // index chưa tồn tại hoặc câu lệnh lỗi.
-    // =====================================================
     @Query(value = """
             SELECT p.id
             FROM products p
@@ -219,9 +196,7 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     List<Product> findByIdInAndActiveTrue(List<Long> ids);
 
-    // =====================================================
     // VIRTUAL TRY-ON: all try-on-enabled products
-    // =====================================================
     @EntityGraph(attributePaths = {
         "subCategory",
         "subCategory.category",

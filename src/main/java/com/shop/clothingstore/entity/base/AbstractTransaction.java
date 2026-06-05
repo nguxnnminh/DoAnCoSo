@@ -29,7 +29,6 @@ public abstract class AbstractTransaction<
         this.transactionDate = LocalDateTime.now();
     }
 
-    // ===== Getter & Setter =====
     public U getActor() {
         return actor;
     }

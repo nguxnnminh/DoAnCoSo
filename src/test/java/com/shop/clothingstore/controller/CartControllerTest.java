@@ -52,7 +52,6 @@ class CartControllerTest {
                 .build();
     }
 
-    // ── VIEW CART ────────────────────────────────────────────
     @Test
     @DisplayName("GET /cart renders cart view with totals")
     void viewCart_ReturnsViewWithModel() throws Exception {
@@ -76,7 +75,6 @@ class CartControllerTest {
                 .andExpect(model().attribute("shippingFee", BigDecimal.ZERO));
     }
 
-    // ── ADD TO CART ──────────────────────────────────────────
     @Test
     @DisplayName("POST /cart/add with valid quantity adds and redirects")
     void addToCart_Valid_Redirects() throws Exception {
@@ -109,7 +107,6 @@ class CartControllerTest {
                 .andExpect(flash().attribute("error", "Out of stock"));
     }
 
-    // ── UPDATE QUANTITY ──────────────────────────────────────
     @Test
     @DisplayName("POST /cart/update changes quantity and redirects")
     void updateCart_Valid_Redirects() throws Exception {
@@ -129,7 +126,6 @@ class CartControllerTest {
                 .andExpect(flash().attributeExists("error"));
     }
 
-    // ── REMOVE / CLEAR ───────────────────────────────────────
     @Test
     @DisplayName("POST /cart/remove removes item and redirects")
     void removeFromCart_Redirects() throws Exception {

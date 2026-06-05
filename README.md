@@ -83,8 +83,8 @@
 
 #### Chain 1 — API (`/api/**`, Order=1)
 - CSRF **tắt** · JWT stateless · CORS bật
-- **Public**: `POST /api/auth/*` · `GET /api/products/**` · `GET /api/categories/**` · `GET /api/subcategories/**` · `/api/cart/**` · `/api/recommendations/**` · `/api/chatbot/**` · `POST /api/coupons/validate` · `/api/tryon/**` · `POST /api/orders/checkout` · `GET /actuator/health`
-- **Authenticated** (JWT): `/api/notifications/**` · `/api/profile/**` · `/api/coupons/my` · mọi request chưa liệt kê
+- **Public**: `POST /api/auth/*` · `GET /api/products/**` · `GET /api/categories/**` · `GET /api/subcategories/**` · `/api/cart/**` · `/api/recommendations/**` · `/api/chatbot/**` · `POST /api/coupons/validate` · `GET /api/coupons/available` · `/api/tryon/**` · `POST /api/orders/checkout` · `GET /actuator/health`
+- **Authenticated** (JWT): `/api/notifications/**` · `/api/profile/**` · `/api/coupons/my` · `/api/reviews/**` · mọi request chưa liệt kê
 - **ADMIN only**: `/api/analytics/**` · `/api/admin/**` · `/actuator/**` (trừ `/health`)
 
 #### Chain 2 — Web (`/**`, Order=2)
@@ -93,10 +93,26 @@
 - **Authenticated**: `/my-orders` · `/my-coupons` · `/profile` · `/orders/**` · `/reviews/**` · `/wishlist/**`
 - **ADMIN only**: `/admin/**`
 
+### Guest (khách vãng lai) vs User (có tài khoản)
+
+| Chức năng | Guest — Web/API | Guest — Mobile | User |
+|---|---|---|---|
+| Duyệt/tìm sản phẩm, chi tiết, gợi ý | ✓ | ✓ | ✓ |
+| Giỏ hàng (session-based) | ✓ | ✓ | ✓ |
+| AI Chatbot · Virtual Try-On | ✓ | ✓ | ✓ |
+| Kiểm tra coupon công khai (`/api/coupons/validate`) | ✓ | ✓ | ✓ |
+| **Đặt hàng (checkout COD)** | ✓ — đơn không gắn tài khoản (`actor=null`) | ✗ — bị ép `/login` | ✓ — đơn gắn tài khoản |
+| Coupon đề xuất ở checkout (`/api/coupons/available`) | rỗng | rỗng | ✓ |
+| Coupon user-specific (welcome/referral), Coupon của tôi | ✗ | ✗ | ✓ |
+| Lịch sử đơn · Wishlist · Hồ sơ · Thông báo · Đánh giá · Referral | ✗ | ✗ | ✓ |
+
+- **Web/API**: khách **chưa đăng nhập vẫn checkout được** (đơn `actor=null` → không tra cứu lại được qua lịch sử).
+- **Mobile** (GoRouter `redirect`): các tiền tố `/checkout` · `/orders` · `/profile` · `/wishlist` · `/notifications` · `/coupons` bị chặn nếu chưa đăng nhập → **mobile không hỗ trợ guest checkout**. Guest mobile chỉ duyệt sản phẩm + thêm giỏ hàng.
+
 ### Cơ chế bảo mật
 - BCrypt (10 rounds) cho password
 - JWT HS256 · `Authorization: Bearer <token>`
-- Login rate limiting: tối đa 5 lần sai / IP / 15 phút (`LoginRateLimitFilter`)
+- Rate limiting (`LoginRateLimitFilter`): đăng nhập tối đa 10 lần / IP / 15 phút, đăng ký 5 lần / IP / 15 phút (HTTP 429 khi vượt)
 - Upload validate magic bytes (không tin vào đuôi file) · chống path traversal
 - Security headers: `X-Frame-Options: DENY` · `HSTS 1 năm` · `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin`
 - Actuator chỉ expose `health` (public) + các endpoint khác (ADMIN)
@@ -157,7 +173,16 @@ DELETE /api/wishlist/{productId}  Xóa khỏi wishlist
 ### Coupon (`/api/coupons`)
 ```
 POST /api/coupons/validate        Kiểm tra mã (body: code, orderTotal) — Public
+GET  /api/coupons/available       Coupon đề xuất cho đơn (?orderTotal=) — Public (rỗng nếu chưa đăng nhập)
 GET  /api/coupons/my              Coupon của tôi — Authenticated
+```
+> `validate`, `available`, `my` đều trả `discountType` (PERCENTAGE/FIXED) và `discountDisplay`
+> (chuỗi "20%" hoặc "100,000₫" — cùng logic `CouponDisplayDTO.getDiscountDisplay()` của web)
+> để client hiển thị %/₫ đúng và đề xuất coupon giống web.
+
+### Đánh giá (`/api/reviews`) — Authenticated
+```
+POST /api/reviews/{orderItemId}   Gửi đánh giá (body: rating, comment) — dùng chung ReviewService với web
 ```
 
 ### Thông báo (`/api/notifications`) — Authenticated
@@ -573,7 +598,8 @@ clothingstore/
 │   │   │   ├── OrderApiController.java         /api/orders/**
 │   │   │   ├── UserApiController.java          /api/profile/**
 │   │   │   ├── WishlistApiController.java      /api/wishlist/**
-│   │   │   ├── CouponApiController.java        /api/coupons/**
+│   │   │   ├── CouponApiController.java        /api/coupons/** (validate · available · my)
+│   │   │   ├── ReviewApiController.java         POST /api/reviews/{orderItemId}
 │   │   │   ├── NotificationApiController.java  /api/notifications/**
 │   │   │   ├── CategoryApiController.java      /api/categories/**
 │   │   │   ├── SubCategoryApiController.java   /api/subcategories/**

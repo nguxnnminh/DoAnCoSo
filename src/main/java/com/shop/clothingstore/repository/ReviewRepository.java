@@ -14,6 +14,15 @@ public interface ReviewRepository extends BaseRepository<Review, Long> {
 
     Optional<Review> findByOrderItem_Id(Long orderItemId);
 
+    // Trả về các orderItemId đã có review trong tập cho trước — đặt cờ "reviewed"
+    // cho danh sách đơn hàng trong 1 truy vấn (tránh N+1).
+    @Query("""
+        SELECT r.orderItem.id
+        FROM Review r
+        WHERE r.orderItem.id IN :orderItemIds
+    """)
+    List<Long> findReviewedOrderItemIds(@Param("orderItemIds") List<Long> orderItemIds);
+
     @Query("""
         SELECT AVG(r.rating)
         FROM Review r

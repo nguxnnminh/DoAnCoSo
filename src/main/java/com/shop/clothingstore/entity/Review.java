@@ -36,38 +36,28 @@ public class Review extends BaseEntity {
     @Column(nullable = false, length = 1000)
     private String comment;
 
-    // ==============================
     // ẢNH ĐÍNH KÈM (tùy chọn) — lưu URL ảnh do khách upload khi đánh giá
     // Bảng phụ review_images(review_id, image_url). Tối đa vài ảnh / review.
-    // ==============================
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "review_images", joinColumns = @JoinColumn(name = "review_id"))
     @Column(name = "image_url", length = 512)
     private List<String> imageUrls = new ArrayList<>();
 
-    // ==============================
     // ACTOR (USER)
-    // ==============================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_id", nullable = false)
     private User actor;
 
-    // ==============================
     // ITEM ID (GENERIC)
-    // ==============================
     @Column(name = "item_id", nullable = false)
     private Long itemId;
 
-    // ==============================
     // ORDER ITEM (CORE RELATION)
-    // ==============================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id", nullable = false)
     private OrderItem orderItem;
 
-    // ==============================
     // GETTER / SETTER
-    // ==============================
     public double getRating() {
         return rating;
     }

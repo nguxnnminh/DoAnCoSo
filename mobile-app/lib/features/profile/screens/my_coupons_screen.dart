@@ -6,12 +6,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/format.dart';
 import '../../../shared/widgets/nova_app_bar.dart';
 
-// ── Model ──────────────────────────────────────────────────────────────────────
-
 class _Coupon {
   final String code;
   final String? description;
+  final String discountType; // PERCENTAGE | FIXED
   final double discountValue;
+  final String discountDisplay; // "20%" hoặc "100,000₫" — định dạng sẵn từ backend (giống web)
   final double? minOrderAmount;
   final String? expiryDate;
   final bool used;
@@ -21,7 +21,9 @@ class _Coupon {
   const _Coupon({
     required this.code,
     this.description,
+    required this.discountType,
     required this.discountValue,
+    required this.discountDisplay,
     this.minOrderAmount,
     this.expiryDate,
     required this.used,
@@ -29,16 +31,28 @@ class _Coupon {
     required this.usable,
   });
 
-  factory _Coupon.fromJson(Map<String, dynamic> j) => _Coupon(
-        code: j['code'] as String,
-        description: j['description'] as String?,
-        discountValue: (j['discountValue'] as num?)?.toDouble() ?? 0,
-        minOrderAmount: (j['minOrderAmount'] as num?)?.toDouble(),
-        expiryDate: j['expiryDate'] as String?,
-        used: j['used'] as bool? ?? false,
-        expired: j['expired'] as bool? ?? false,
-        usable: j['usable'] as bool? ?? false,
-      );
+  factory _Coupon.fromJson(Map<String, dynamic> j) {
+    final type = (j['discountType'] as String?) ?? 'FIXED';
+    final value = (j['discountValue'] as num?)?.toDouble() ?? 0;
+    // Ưu tiên chuỗi định dạng sẵn từ backend; fallback tự dựng theo đúng logic web
+    // (PERCENTAGE → "20%", FIXED → tiền) nếu API cũ chưa trả discountDisplay.
+    final display = (j['discountDisplay'] as String?) ??
+        (type == 'PERCENTAGE'
+            ? '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)}%'
+            : formatPrice(value));
+    return _Coupon(
+      code: j['code'] as String,
+      description: j['description'] as String?,
+      discountType: type,
+      discountValue: value,
+      discountDisplay: display,
+      minOrderAmount: (j['minOrderAmount'] as num?)?.toDouble(),
+      expiryDate: j['expiryDate'] as String?,
+      used: j['used'] as bool? ?? false,
+      expired: j['expired'] as bool? ?? false,
+      usable: j['usable'] as bool? ?? false,
+    );
+  }
 
   String get statusLabel {
     if (used) return 'Used';
@@ -55,14 +69,10 @@ class _Coupon {
   }
 }
 
-// ── Provider ───────────────────────────────────────────────────────────────────
-
 final _myCouponsProvider = FutureProvider<List<_Coupon>>((ref) async {
   final res = await ref.read(apiClientProvider).dio.get('/api/coupons/my');
   return (res.data as List).map((e) => _Coupon.fromJson(e as Map<String, dynamic>)).toList();
 });
-
-// ── Screen ─────────────────────────────────────────────────────────────────────
 
 class MyCouponsScreen extends ConsumerStatefulWidget {
   const MyCouponsScreen({super.key});
@@ -199,7 +209,7 @@ class _CouponCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(formatPrice(coupon.discountValue), style: const TextStyle(fontFamily: 'BebasNeue', fontSize: 28, letterSpacing: 0.06, color: AppColors.textPrimary)),
+                      Text(coupon.discountDisplay, style: const TextStyle(fontFamily: 'BebasNeue', fontSize: 28, letterSpacing: 0.06, color: AppColors.textPrimary)),
                       const Text(' OFF', style: TextStyle(fontFamily: 'BebasNeue', fontSize: 16, color: AppColors.textMuted)),
                       const Spacer(),
                       Container(

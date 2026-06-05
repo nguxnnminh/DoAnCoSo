@@ -51,9 +51,7 @@ public class CheckoutService {
         this.notificationService = notificationService;
     }
 
-    // =====================================================
     // CHECKOUT (supports guest + authenticated, with coupon)
-    // =====================================================
     @Transactional
     public Order checkout(
             String customerName,
@@ -89,7 +87,6 @@ public class CheckoutService {
             order.setActor(user);
         }
 
-        // ---- Stock check + deduction (pessimistic lock per variant) ----
         List<OrderItem> items = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
 
@@ -154,11 +151,9 @@ public class CheckoutService {
             });
         }
 
-        // ---- Shipping fee: free on orders >= 500k, else flat 30k ----
         BigDecimal shippingFee = subtotal.compareTo(FREE_SHIP_THRESHOLD) >= 0
                 ? BigDecimal.ZERO : SHIP_FEE;
 
-        // ---- Apply coupon — throws if coupon invalid at apply-time ----
         BigDecimal discountedSubtotal = couponService.applyCoupon(couponCode, subtotal, user);
         BigDecimal total = discountedSubtotal.add(shippingFee);
 

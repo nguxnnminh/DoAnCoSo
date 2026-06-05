@@ -62,9 +62,7 @@ public class ShopController {
         this.userService = userService;
     }
 
-    // =====================================================
     // HOME
-    // =====================================================
     @GetMapping("/")
     public String home(Model model) {
         // Best sellers: 1 top-selling product per category (top / bottom / accessories)
@@ -91,9 +89,7 @@ public class ShopController {
         return "shop/sizing";
     }
 
-    // =====================================================
     // SORT HELPER
-    // =====================================================
     private Pageable buildPageable(int page, String sort) {
         Sort sortObj = switch (sort != null ? sort : "newest") {
             case "price_asc"   -> Sort.by("minPrice").ascending();
@@ -104,11 +100,9 @@ public class ShopController {
         return PageRequest.of(page, 12, sortObj);
     }
 
-    // =====================================================
     // PAGINATION WINDOW HELPER
     // Computes a ±2 window around the current page so the
     // template never renders more than 7 page buttons.
-    // =====================================================
     private void addPaginationWindow(Model model, Page<?> page) {
         int current     = page.getNumber();
         int total       = page.getTotalPages();
@@ -120,9 +114,7 @@ public class ShopController {
         model.addAttribute("showEndEllipsis",    windowEnd < total - 2);
     }
 
-    // =====================================================
     // ALL PRODUCTS
-    // =====================================================
     @GetMapping("/products")
     public String products(
             @RequestParam(required = false) BigDecimal minPrice,
@@ -148,9 +140,7 @@ public class ShopController {
         return "shop/products";
     }
 
-    // =====================================================
     // PRODUCTS BY CATEGORY
-    // =====================================================
     @GetMapping("/products/{categorySlug}")
     public String productsByCategory(
             @PathVariable String categorySlug,
@@ -184,9 +174,7 @@ public class ShopController {
         return "shop/products";
     }
 
-    // =====================================================
     // PRODUCTS BY SUBCATEGORY
-    // =====================================================
     @GetMapping("/products/{categorySlug}/{subSlug}")
     public String productsBySubCategory(
             @PathVariable String categorySlug,
@@ -232,9 +220,7 @@ public class ShopController {
         return "shop/products";
     }
 
-    // =====================================================
     // PRODUCT DETAIL BY SLUG
-    // =====================================================
     @GetMapping("/product/{slug}")
     public String productDetailBySlug(
             @PathVariable String slug,
@@ -245,9 +231,7 @@ public class ShopController {
         return renderProductDetail(product, model, authentication);
     }
 
-    // =====================================================
     // PRODUCT DETAIL BY CATEGORY/SUB/ID
-    // =====================================================
     @GetMapping("/products/{categorySlug}/{subSlug}/{id}")
     public String productDetail(
             @PathVariable String categorySlug,
@@ -262,7 +246,6 @@ public class ShopController {
         return renderProductDetail(product, model, authentication);
     }
 
-    // =====================================================
     // SHARED RENDER LOGIC
     //
     // BEFORE: 6 sequential DB queries per page view
@@ -278,7 +261,6 @@ public class ShopController {
     //   recommendationService.get...()   → query 2  (images pre-fetched via EntityGraph)
     //   userService.findByEmail()         → query 3
     //   wishlistService.isInWishlist()    → query 4
-    // =====================================================
     private String renderProductDetail(Product product, Model model, Authentication authentication) {
         Long id = product.getId();
 

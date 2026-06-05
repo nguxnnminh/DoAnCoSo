@@ -71,7 +71,6 @@ class ShopControllerTest {
         return p;
     }
 
-    // ── HOME ─────────────────────────────────────────────────
     @Test
     @DisplayName("GET / renders home with best sellers")
     void home_RendersView() throws Exception {
@@ -83,7 +82,6 @@ class ShopControllerTest {
                 .andExpect(model().attributeExists("bestSellers"));
     }
 
-    // ── PRODUCT LIST ─────────────────────────────────────────
     @Test
     @DisplayName("GET /products renders product list with pagination window")
     void products_RendersView() throws Exception {
@@ -98,7 +96,6 @@ class ShopControllerTest {
                         "pageWindowStart", "pageWindowEnd"));
     }
 
-    // ── LIST BY CATEGORY ─────────────────────────────────────
     @Test
     @DisplayName("GET /products/{cat} renders list for a known category")
     void productsByCategory_Known_RendersView() throws Exception {
@@ -126,7 +123,6 @@ class ShopControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // ── PRODUCT DETAIL ───────────────────────────────────────
     @Test
     @DisplayName("GET /product/{slug} renders detail with review aggregates")
     void productDetail_BySlug_RendersView() throws Exception {
@@ -176,7 +172,6 @@ class ShopControllerTest {
         }
     }
 
-    // ── DETAIL BY CATEGORY/SUB/ID ────────────────────────────
     @Test
     @DisplayName("GET /products/{cat}/{sub}/{id} renders detail")
     void productDetail_ById_RendersView() throws Exception {

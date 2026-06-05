@@ -17,6 +17,7 @@ import com.shop.clothingstore.dto.api.CheckoutRequest;
 import com.shop.clothingstore.dto.api.OrderResponse;
 import com.shop.clothingstore.entity.Order;
 import com.shop.clothingstore.entity.User;
+import com.shop.clothingstore.repository.ReviewRepository;
 import com.shop.clothingstore.service.CartService;
 import com.shop.clothingstore.service.CheckoutService;
 import com.shop.clothingstore.service.OrderService;
@@ -32,21 +33,22 @@ public class OrderApiController {
     private final OrderService orderService;
     private final UserService userService;
     private final CartService cartService;
+    private final ReviewRepository reviewRepository;
 
     public OrderApiController(
             CheckoutService checkoutService,
             OrderService orderService,
             UserService userService,
-            CartService cartService) {
+            CartService cartService,
+            ReviewRepository reviewRepository) {
         this.checkoutService = checkoutService;
         this.orderService = orderService;
         this.userService = userService;
         this.cartService = cartService;
+        this.reviewRepository = reviewRepository;
     }
 
-    // =====================================================
     // POST /api/orders/checkout
-    // =====================================================
     @PostMapping("/checkout")
     public ResponseEntity<OrderResponse> checkout(
             @Valid @RequestBody CheckoutRequest request,
@@ -66,9 +68,7 @@ public class OrderApiController {
         return ResponseEntity.ok(OrderResponse.from(order));
     }
 
-    // =====================================================
     // GET /api/orders/my
-    // =====================================================
     @GetMapping("/my")
     public ResponseEntity<List<OrderResponse>> myOrders(Principal principal) {
         User user = getUser(principal);
@@ -76,16 +76,26 @@ public class OrderApiController {
             throw new IllegalStateException("Authentication required to view orders");
         }
 
-        List<OrderResponse> orders = orderService.findOrdersByUser(user).stream()
-                .map(OrderResponse::from)
+        List<Order> userOrders = orderService.findOrdersByUser(user);
+
+        // Tập orderItemId đã được đánh giá (1 truy vấn) → đặt cờ reviewed cho từng item.
+        List<Long> itemIds = userOrders.stream()
+                .filter(o -> o.getItems() != null)
+                .flatMap(o -> o.getItems().stream())
+                .map(i -> i.getId())
+                .toList();
+        java.util.Set<Long> reviewedItemIds = itemIds.isEmpty()
+                ? java.util.Set.of()
+                : new java.util.HashSet<>(reviewRepository.findReviewedOrderItemIds(itemIds));
+
+        List<OrderResponse> orders = userOrders.stream()
+                .map(o -> OrderResponse.from(o, reviewedItemIds))
                 .toList();
         return ResponseEntity.ok(orders);
     }
 
-    // =====================================================
     // POST /api/orders/{id}/cancel
     // User self-cancel while order is PENDING
-    // =====================================================
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Map<String, Object>> cancelOrder(
             @PathVariable Long id,
@@ -103,10 +113,8 @@ public class OrderApiController {
         }
     }
 
-    // =====================================================
     // POST /api/orders/{id}/cancel-request
     // User requests cancellation with a reason while order is PROCESSING
-    // =====================================================
     @PostMapping("/{id}/cancel-request")
     public ResponseEntity<Map<String, Object>> requestCancel(
             @PathVariable Long id,

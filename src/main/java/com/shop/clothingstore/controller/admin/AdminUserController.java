@@ -34,11 +34,9 @@ public class AdminUserController extends AdminBaseController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ─────────────────────────────────────────────────────────
     // LIST — DB-level search + role filter + pagination
     // BUG FIX: previously called findAll() — loaded ALL users
     //          with no pagination and ignored search/role params.
-    // ─────────────────────────────────────────────────────────
     @GetMapping
     public String listUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -119,9 +117,7 @@ public class AdminUserController extends AdminBaseController {
         return ok(ajax, ra, "User created successfully!", "/admin/users");
     }
 
-    // ─────────────────────────────────────────────────────────
     // EDIT FORM
-    // ─────────────────────────────────────────────────────────
     @GetMapping("/{id}/edit")
     public String showEditForm(
             @PathVariable Long id,
@@ -149,9 +145,7 @@ public class AdminUserController extends AdminBaseController {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
     // UPDATE
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/{id}")
     public Object updateUser(
             @PathVariable Long id,
@@ -168,9 +162,7 @@ public class AdminUserController extends AdminBaseController {
         return ok(ajax, ra, "User updated successfully!", "/admin/users");
     }
 
-    // ─────────────────────────────────────────────────────────
     // DELETE
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/{id}/delete")
     public String deleteUser(
             @PathVariable Long id,

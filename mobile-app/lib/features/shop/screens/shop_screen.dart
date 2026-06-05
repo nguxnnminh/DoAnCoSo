@@ -66,7 +66,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       ),
       body: Column(
         children: [
-          // ── SEARCH BAR ────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
@@ -112,7 +111,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
             ),
           ),
 
-          // ── ACTIVE FILTER CHIPS ───────────────────────────────────────
           if (filter.categoryId != null || filter.keyword.isNotEmpty || filter.minPrice != null || filter.maxPrice != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -149,7 +147,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               ),
             ),
 
-          // ── SORT + COUNT ROW ──────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Row(
@@ -169,7 +166,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
           const SizedBox(height: 12),
 
-          // ── PRODUCT GRID ──────────────────────────────────────────────
           Expanded(
             child: products.when(
               data: (page) => page.content.isEmpty
@@ -192,7 +188,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                             ),
                           ),
                         ),
-                        // ── PAGINATION ────────────────────────────────────
                         if (page.totalPages > 1)
                           _Pagination(
                             current: page.page,
@@ -252,8 +247,6 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   }
 }
 
-// ── ACTIVE FILTER CHIP ────────────────────────────────────────────────────────
-
 class _Chip extends StatelessWidget {
   final String label;
   final VoidCallback onRemove;
@@ -274,8 +267,6 @@ class _Chip extends StatelessWidget {
         ),
       );
 }
-
-// ── SORT PICKER ───────────────────────────────────────────────────────────────
 
 class _SortPicker extends StatelessWidget {
   final String current;
@@ -319,8 +310,6 @@ class _SortPicker extends StatelessWidget {
         ),
       );
 }
-
-// ── PAGINATION ────────────────────────────────────────────────────────────────
 
 class _Pagination extends StatelessWidget {
   final int current;
@@ -394,8 +383,6 @@ class _PageBtn extends StatelessWidget {
       );
 }
 
-// ── EMPTY STATE ───────────────────────────────────────────────────────────────
-
 class _EmptyState extends StatelessWidget {
   final VoidCallback onClear;
   const _EmptyState({required this.onClear});
@@ -419,8 +406,6 @@ class _EmptyState extends StatelessWidget {
         ),
       );
 }
-
-// ── FILTER BOTTOM SHEET ───────────────────────────────────────────────────────
 
 class _FilterSheet extends ConsumerStatefulWidget {
   final ShopFilter currentFilter;

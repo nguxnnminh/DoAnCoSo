@@ -37,9 +37,7 @@ public class OrderController {
         this.reviewService = reviewService;
     }
 
-    // ===============================
     // CANCEL ORDER (PENDING only)
-    // ===============================
     @PostMapping("/orders/{id}/cancel")
     public String cancelOrder(
             @PathVariable Long id,
@@ -58,9 +56,7 @@ public class OrderController {
         return "redirect:/orders/" + id;
     }
 
-    // ===============================
     // REQUEST CANCELLATION (PROCESSING only)
-    // ===============================
     @PostMapping("/orders/{id}/cancel-request")
     public String requestCancelOrder(
             @PathVariable Long id,
@@ -80,9 +76,7 @@ public class OrderController {
         return "redirect:/orders/" + id;
     }
 
-    // ===============================
     // MY ORDERS (LIST)
-    // ===============================
     @GetMapping("/my-orders")
     public String myOrders(
             Principal principal,
@@ -104,9 +98,7 @@ public class OrderController {
         return "shop/my-orders";
     }
 
-    // ===============================
     // ORDER DETAIL
-    // ===============================
     @GetMapping("/orders/{id}")
     public String orderDetail(
             @PathVariable Long id,

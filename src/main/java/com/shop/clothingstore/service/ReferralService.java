@@ -45,9 +45,7 @@ public class ReferralService {
         this.couponService = couponService;
     }
 
-    // ─────────────────────────────────────────────────────────────
     // SINH MÃ
-    // ─────────────────────────────────────────────────────────────
     /** Đảm bảo user có referralCode; sinh mới nếu chưa có. KHÔNG tự lưu (caller lưu). */
     public void ensureReferralCode(User user) {
         if (user.getReferralCode() == null || user.getReferralCode().isBlank()) {
@@ -74,9 +72,7 @@ public class ReferralService {
         return sb.toString();
     }
 
-    // ─────────────────────────────────────────────────────────────
     // GẮN NGƯỜI GIỚI THIỆU KHI ĐĂNG KÝ
-    // ─────────────────────────────────────────────────────────────
     /**
      * Gắn referredById cho user mới dựa trên mã giới thiệu (nếu hợp lệ).
      * Bỏ qua nếu mã rỗng, không tồn tại, hoặc tự giới thiệu chính mình.
@@ -95,9 +91,7 @@ public class ReferralService {
         });
     }
 
-    // ─────────────────────────────────────────────────────────────
     // TRAO THƯỞNG KHI ĐƠN ĐẦU HOÀN TẤT
-    // ─────────────────────────────────────────────────────────────
     /**
      * Gọi khi một đơn của buyer chuyển sang COMPLETED. Nếu buyer được ai đó giới thiệu
      * và chưa từng được thưởng → tặng coupon cho cả hai, đánh dấu đã thưởng.

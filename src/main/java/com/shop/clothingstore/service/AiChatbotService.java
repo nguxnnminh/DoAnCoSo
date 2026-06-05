@@ -121,8 +121,6 @@ public class AiChatbotService {
         }
     }
 
-    // ─── AI conversation with function-calling loop ──────────────────────────
-
     private ChatbotResponse runAiConversation(String userMessage, List<Map<String, Object>> history)
             throws IOException, InterruptedException {
 
@@ -190,8 +188,6 @@ public class AiChatbotService {
                         : "Đây là một vài gợi ý phù hợp:",
                 attachedProducts);
     }
-
-    // ─── Tool (function) execution against the live database ─────────────────
 
     private ToolResult executeFunction(String name, JsonNode args) {
         try {
@@ -261,8 +257,6 @@ public class AiChatbotService {
         return new ToolResult(productDetail(p), List.of(p));
     }
 
-    // ─── Multi-step fallback search (graceful relaxation) ────────────────────
-
     private List<Product> searchWithFallback(ProductFilterDTO base, int limit) {
         PageRequest page = PageRequest.of(0, limit);
 
@@ -306,8 +300,6 @@ public class AiChatbotService {
         f.setMaxPrice(src.getMaxPrice());
         return f;
     }
-
-    // ─── Product → JSON summaries for the model ──────────────────────────────
 
     private List<Map<String, Object>> summarize(List<Product> products) {
         List<Map<String, Object>> out = new ArrayList<>();
@@ -370,8 +362,6 @@ public class AiChatbotService {
         return new ArrayList<>(sizes);
     }
 
-    // ─── System prompt (shop knowledge + catalogue) ──────────────────────────
-
     private String buildSystemPrompt() {
         return """
 Bạn là trợ lý bán hàng thân thiện của website thời trang NOVA. Trả lời bằng tiếng Việt, ngắn gọn, đúng trọng tâm.
@@ -420,8 +410,6 @@ QUY TẮC:
         return sb.toString().trim();
     }
 
-    // ─── Tool declarations (Gemini function calling) ─────────────────────────
-
     private List<Map<String, Object>> buildTools() {
         Map<String, Object> searchProducts = Map.of(
                 "name", "search_products",
@@ -462,8 +450,6 @@ QUY TẮC:
         return List.of(Map.of("functionDeclarations", List.of(searchProducts, bestSellers, productDetails)));
     }
 
-    // ─── Conversation history → Gemini contents ──────────────────────────────
-
     private void appendHistory(List<Map<String, Object>> contents, List<Map<String, Object>> history) {
         if (history == null || history.isEmpty()) return;
         int start = Math.max(0, history.size() - 6);
@@ -480,8 +466,6 @@ QUY TẮC:
             contents.add(content(geminiRole, List.of(textPart(String.valueOf(text)))));
         }
     }
-
-    // ─── Offline / error fallback (minimal, no rule engine) ──────────────────
 
     private ChatbotResponse offlineFallback() {
         try {
@@ -512,8 +496,6 @@ QUY TẮC:
         }
         aiDisabledUntil = Instant.now().plusSeconds(cooldown);
     }
-
-    // ─── Small helpers ───────────────────────────────────────────────────────
 
     private static final com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>> MAP_TYPE =
             new com.fasterxml.jackson.core.type.TypeReference<>() {};

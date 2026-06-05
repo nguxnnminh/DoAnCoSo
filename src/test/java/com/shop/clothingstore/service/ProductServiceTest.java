@@ -67,9 +67,7 @@ class ProductServiceTest {
         existingVariant.setProduct(existingProduct);
     }
 
-    // =====================================================
     // BUG-02: updateVariants must not duplicate existing variants
-    // =====================================================
 
     @Test
     void updateProduct_existingVariantUpdated_notDuplicated() throws Exception {
@@ -152,9 +150,7 @@ class ProductServiceTest {
         assertThat(result.getProductVariants().get(0).getSize()).isEqualTo("M");
     }
 
-    // =====================================================
     // BUG-01: image deletion must not crash on unmodifiable list
-    // =====================================================
 
     @Test
     void updateProduct_imageDeletion_doesNotThrow() throws Exception {
@@ -179,9 +175,7 @@ class ProductServiceTest {
         assertThat(result).isNotNull();
     }
 
-    // =====================================================
     // minPrice refresh after variant changes
-    // =====================================================
 
     @Test
     void addVariant_refreshesMinPrice() {
@@ -206,9 +200,7 @@ class ProductServiceTest {
         assertThat(product.getMinPrice()).isEqualByComparingTo("100000");
     }
 
-    // =====================================================
     // SubCategoryId required validation
-    // =====================================================
 
     @Test
     void updateProduct_nullSubCategoryId_throwsIllegalArgument() throws Exception {
@@ -223,9 +215,7 @@ class ProductServiceTest {
                 .hasMessageContaining("SubCategoryId");
     }
 
-    // =====================================================
     // Helpers
-    // =====================================================
 
     private ProductUpdateDTO buildUpdateDto(List<VariantDTO> variants) {
         ProductUpdateDTO dto = new ProductUpdateDTO();

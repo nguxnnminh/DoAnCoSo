@@ -35,9 +35,7 @@ public class FileStorageService {
 
     public String upload(MultipartFile file, String folder) throws IOException {
 
-        // =====================================================
         // VALIDATE
-        // =====================================================
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File must not be empty");
         }
@@ -65,9 +63,7 @@ public class FileStorageService {
                     "Invalid file signature. The file extension may have been spoofed.");
         }
 
-        // =====================================================
         // UPLOAD
-        // =====================================================
         Path uploadPath = resolveFolder(folder);
 
         if (!Files.exists(uploadPath)) {

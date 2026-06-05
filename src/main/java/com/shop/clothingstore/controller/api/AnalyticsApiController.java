@@ -38,9 +38,7 @@ public class AnalyticsApiController {
         this.variantRepository = variantRepository;
     }
 
-    // =====================================================
     // GET /api/analytics/top-products?limit=10
-    // =====================================================
     @GetMapping("/top-products")
     public ResponseEntity<List<ProductResponse>> topProducts(
             @RequestParam(defaultValue = "10") int limit) {
@@ -54,9 +52,7 @@ public class AnalyticsApiController {
         return ResponseEntity.ok(result);
     }
 
-    // =====================================================
     // GET /api/analytics/trending (newest products + best sellers)
-    // =====================================================
     @GetMapping("/trending")
     public ResponseEntity<List<ProductResponse>> trending(
             @RequestParam(defaultValue = "8") int limit) {
@@ -71,9 +67,7 @@ public class AnalyticsApiController {
         return ResponseEntity.ok(result);
     }
 
-    // =====================================================
     // GET /api/analytics/overview (overall KPIs)
-    // =====================================================
     @GetMapping("/overview")
     public ResponseEntity<Map<String, Object>> overview() {
 

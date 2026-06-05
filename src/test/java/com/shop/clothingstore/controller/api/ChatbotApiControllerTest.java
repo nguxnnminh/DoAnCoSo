@@ -43,9 +43,7 @@ class ChatbotApiControllerTest {
     @MockitoBean
     private CustomUserDetailsService customUserDetailsService;
 
-    // =============================================================
     // POST /api/chatbot - Normal cases
-    // =============================================================
     @Test
     @DisplayName("POST /api/chatbot with greeting returns 200 and message")
     void chat_Greeting_ReturnsOkWithMessage() throws Exception {
@@ -104,9 +102,7 @@ class ChatbotApiControllerTest {
                 .andExpect(jsonPath("$.message").value("Xin chào!"));
     }
 
-    // =============================================================
     // Verifies the API is public (no auth required)
-    // =============================================================
     @Test
     @DisplayName("POST /api/chatbot is accessible without authentication")
     void chat_PublicEndpoint_NoAuthRequired() throws Exception {

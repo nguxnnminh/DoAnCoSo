@@ -70,9 +70,7 @@ class CheckoutServiceTest {
         cartItem.setQuantity(2);
     }
 
-    // =====================================================
     // HAPPY PATH
-    // =====================================================
     @Test
     void checkout_happyPath_createsOrderAndDeductsStock() {
         when(variantRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(variant));
@@ -124,9 +122,7 @@ class CheckoutServiceTest {
                 "123 Le Loi", List.of(cartItem), null, null, "Please gift wrap");
     }
 
-    // =====================================================
     // STOCK VALIDATION
-    // =====================================================
     @Test
     void checkout_insufficientStock_throwsIllegalState() {
         variant.setStock(1);
@@ -166,9 +162,7 @@ class CheckoutServiceTest {
         verify(orderRepository, never()).save(any());
     }
 
-    // =====================================================
     // PRICE SNAPSHOT
-    // =====================================================
     @Test
     void checkout_usesDatabasePriceNotCartPrice() {
         cartItem.setPrice(new BigDecimal("200000"));
@@ -186,9 +180,7 @@ class CheckoutServiceTest {
                 List.of(cartItem), null, null, null);
     }
 
-    // =====================================================
     // MULTIPLE ITEMS
-    // =====================================================
     @Test
     void checkout_multipleItems_allStockDeducted() {
         Product product2 = new Product();

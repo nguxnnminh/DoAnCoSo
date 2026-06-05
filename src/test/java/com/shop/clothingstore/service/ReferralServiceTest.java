@@ -50,7 +50,6 @@ class ReferralServiceTest {
         ReflectionTestUtils.setField(u, "id", id);
     }
 
-    // ── ensureReferralCode ─────────────────────────────────────────
     @Test
     void ensureReferralCode_generatesWhenMissing() {
         when(userRepository.existsByReferralCode(anyString())).thenReturn(false);
@@ -72,7 +71,6 @@ class ReferralServiceTest {
         assertThat(u.getReferralCode()).isEqualTo("EXISTING1");
     }
 
-    // ── applyReferralCode ──────────────────────────────────────────
     @Test
     void applyReferralCode_linksValidReferrer() {
         User referrer = newUser();
@@ -107,7 +105,6 @@ class ReferralServiceTest {
         assertThat(self.getReferredById()).isNull();
     }
 
-    // ── rewardOnFirstCompletedOrder ────────────────────────────────
     @Test
     void reward_grantsCouponsToBothWhenClaimed() {
         User buyer = newUser();

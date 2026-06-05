@@ -32,7 +32,6 @@ public class AdminCategoryController extends AdminBaseController {
         this.subCategoryService = subCategoryService;
     }
 
-    // ── LIST ────────────────────────────────────────────
     @GetMapping
     public String list(Model model) {
         model.addAttribute("title", "Categories");
@@ -41,7 +40,6 @@ public class AdminCategoryController extends AdminBaseController {
         return "admin/categories/index";
     }
 
-    // ── CREATE FORM ─────────────────────────────────────
     @GetMapping("/create")
     public String createForm(Model model, HttpServletRequest request) {
         model.addAttribute("title", "Add Category");
@@ -57,7 +55,6 @@ public class AdminCategoryController extends AdminBaseController {
                 : "redirect:/admin/categories?modal=create";
     }
 
-    // ── CREATE POST ──────────────────────────────────────
     @PostMapping("/create")
     public Object create(@RequestParam String name,
                          @RequestParam(required = false) String slug,
@@ -89,7 +86,6 @@ public class AdminCategoryController extends AdminBaseController {
         return ok(ajax, ra, msg, "/admin/categories");
     }
 
-    // ── EDIT FORM ────────────────────────────────────────
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra,
                            HttpServletRequest request) {
@@ -108,7 +104,6 @@ public class AdminCategoryController extends AdminBaseController {
         });
     }
 
-    // ── UPDATE POST ──────────────────────────────────────
     @PostMapping("/{id}")
     public Object update(@PathVariable Long id,
                          @RequestParam String name,
@@ -146,7 +141,6 @@ public class AdminCategoryController extends AdminBaseController {
         return ok(ajax, ra, "Category updated successfully!", "/admin/categories");
     }
 
-    // ── DELETE POST ──────────────────────────────────────
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes ra) {
         List<SubCategory> subs = subCategoryService.getByCategoryId(id);
@@ -164,7 +158,6 @@ public class AdminCategoryController extends AdminBaseController {
         return "redirect:/admin/categories";
     }
 
-    // ── SLUG HELPERS ─────────────────────────────────────
     private String toSlug(String input) {
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
         String s = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");

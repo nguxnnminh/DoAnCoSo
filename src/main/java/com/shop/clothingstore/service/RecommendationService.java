@@ -39,9 +39,7 @@ public class RecommendationService {
         this.productRepository = productRepository;
     }
 
-    // =====================================================
     // 1. CONTENT-BASED: similar products (same category, ±30% price range)
-    // =====================================================
     public List<Product> getSimilarProducts(Long productId, int limit) {
 
         Product product = productRepository.findById(productId).orElse(null);
@@ -94,9 +92,7 @@ public class RecommendationService {
         return filtered;
     }
 
-    // =====================================================
     // 2. COLLABORATIVE: users who bought this also bought
-    // =====================================================
     public List<Product> getCollaborativeRecommendations(User user, int limit) {
 
         if (user == null) {
@@ -186,9 +182,7 @@ public class RecommendationService {
         return result;
     }
 
-    // =====================================================
     // 3. HYBRID: collaborative + best sellers fallback
-    // =====================================================
     public List<Product> getRecommendations(User user, int limit) {
 
         Set<Long> addedIds = new LinkedHashSet<>();

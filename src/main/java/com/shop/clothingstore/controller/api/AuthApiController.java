@@ -64,9 +64,7 @@ public class AuthApiController {
         this.publicBaseUrl = publicBaseUrl;
     }
 
-    // =====================================================
     // POST /api/auth/register
-    // =====================================================
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
@@ -89,9 +87,7 @@ public class AuthApiController {
         return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getRole().name()));
     }
 
-    // =====================================================
     // POST /api/auth/login
-    // =====================================================
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
@@ -112,11 +108,9 @@ public class AuthApiController {
         return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getRole().name()));
     }
 
-    // =====================================================
     // POST /api/auth/forgot-password
     // Body: { "email": "user@example.com" }
     // Always returns 200 (don't leak email existence)
-    // =====================================================
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         String email = request.getEmail().trim().toLowerCase();
@@ -140,10 +134,8 @@ public class AuthApiController {
         private String email;
     }
 
-    // =====================================================
     // POST /api/auth/reset-password
     // Body: { "token": "...", "password": "...", "confirmPassword": "..." }
-    // =====================================================
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         if (!request.getPassword().equals(request.getConfirmPassword())) {

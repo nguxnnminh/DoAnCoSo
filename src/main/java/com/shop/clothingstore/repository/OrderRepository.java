@@ -19,9 +19,7 @@ import com.shop.clothingstore.repository.base.BaseRepository;
 
 public interface OrderRepository extends BaseRepository<Order, Long> {
 
-    // =====================================================
     // USER QUERIES
-    // =====================================================
     List<Order> findByActor(User actor);
 
     // Eager-load items: rendered by my-orders.html (item count) with OSIV disabled.
@@ -37,9 +35,7 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
 
     Page<Order> findByActorOrderByCreatedAtDesc(User actor, Pageable pageable);
 
-    // =====================================================
     // ADMIN QUERIES
-    // =====================================================
     Page<Order> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<Order> findByStatus(OrderStatus status);
@@ -81,9 +77,7 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
             Pageable pageable
     );
 
-    // =====================================================
     // DASHBOARD KPI (GENERIC TOTAL AMOUNT)
-    // =====================================================
     @Query("""
         SELECT COALESCE(SUM(o.total), 0)
         FROM Order o
@@ -119,9 +113,7 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
             @Param("since") java.time.LocalDateTime since
     );
 
-    // =====================================================
     // DASHBOARD CHART (GENERIC AGGREGATION)
-    // =====================================================
     @Query("""
         SELECT DATE(o.createdAt), SUM(o.total)
         FROM Order o
@@ -158,9 +150,7 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
             @Param("endDate") LocalDateTime endDate
     );
 
-    // =====================================================
     // DASHBOARD — TOP SELLING / STATUS DISTRIBUTION
-    // =====================================================
     @Query("""
         SELECT i.productName, SUM(i.price * i.quantity), SUM(i.quantity)
         FROM Order o
@@ -181,9 +171,7 @@ public interface OrderRepository extends BaseRepository<Order, Long> {
     """)
     BigDecimal getAvgOrderValue(@Param("status") OrderStatus status);
 
-    // =====================================================
     // GENERIC TRANSACTION CHECK (NO PRODUCT COUPLING)
-    // =====================================================
     @Query("""
         SELECT COUNT(o) > 0
         FROM Order o

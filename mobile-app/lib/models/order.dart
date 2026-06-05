@@ -1,24 +1,30 @@
 class OrderItem {
+  final int? id; // orderItemId — cần để gửi đánh giá
   final String productName;
   final String size;
   final String color;
   final double price;
   final int quantity;
+  final bool reviewed;
 
   const OrderItem({
+    this.id,
     required this.productName,
     required this.size,
     required this.color,
     required this.price,
     required this.quantity,
+    this.reviewed = false,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> j) => OrderItem(
+        id: j['id'] as int?,
         productName: j['productName'] as String? ?? '',
         size: j['size'] as String? ?? '',
         color: j['color'] as String? ?? '',
         price: (j['price'] as num?)?.toDouble() ?? 0,
         quantity: j['quantity'] as int? ?? 1,
+        reviewed: j['reviewed'] as bool? ?? false,
       );
 }
 

@@ -60,9 +60,7 @@ public class TryOnService {
         this.baseUploadDir = baseUploadDir;
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // ADMIN: Preprocess garment image & enable try-on for a product
-    // ───────────────────────────────────────────────────────────────────
     /**
      * Preprocess the garment image through the Python bridge (rembg +
      * normalize), save the result, and enable try-on for the product.
@@ -144,9 +142,7 @@ public class TryOnService {
         log.info("Try-on disabled | product={}", productId);
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // USER: Single-garment try-on (async)
-    // ───────────────────────────────────────────────────────────────────
     /** Async single-garment try-on. Runs on the tryOnExecutor thread pool. */
     @Async("tryOnExecutor")
     public CompletableFuture<byte[]> generateTryOnAsync(Path personImagePath, Long productId) {
@@ -208,9 +204,7 @@ public class TryOnService {
         }
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // USER: Full outfit try-on — top + bottom via compositing (NOT chaining)
-    // ───────────────────────────────────────────────────────────────────
     /**
      * Generate a full outfit try-on image (top + bottom combined).
      *
@@ -304,17 +298,13 @@ public class TryOnService {
         return generateOutfitTryOn(personImagePath, productIds.get(0), productIds.get(1));
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // PRODUCT LIST (cached)
-    // ───────────────────────────────────────────────────────────────────
     @Cacheable("tryOnProducts")
     public java.util.List<Product> findAllTryOnEnabled() {
         return productRepository.findAllTryOnEnabled();
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // HEALTH CHECK
-    // ───────────────────────────────────────────────────────────────────
     @SuppressWarnings("unchecked")
     public Map<String, Object> checkHealth() {
         try {
@@ -326,9 +316,7 @@ public class TryOnService {
         }
     }
 
-    // ───────────────────────────────────────────────────────────────────
     // Private helpers
-    // ───────────────────────────────────────────────────────────────────
     private Product resolveEnabledProduct(Long productId) {
         Product p = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));

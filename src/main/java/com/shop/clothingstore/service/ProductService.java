@@ -54,9 +54,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         this.fileStorageService = fileStorageService;
     }
 
-    // =====================================================
     // CREATE PRODUCT
-    // =====================================================
     @Transactional
     @CacheEvict(value = "bestSellers", allEntries = true)
     public Product createProduct(ProductCreateDTO dto) throws IOException {
@@ -120,9 +118,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         }
     }
 
-    // =====================================================
     // UPDATE PRODUCT
-    // =====================================================
     @Transactional
     @CacheEvict(value = {"bestSellers", "tryOnProducts"}, allEntries = true)
     public Product updateProduct(Long id, ProductUpdateDTO dto) throws IOException {
@@ -176,7 +172,6 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         return save(product);
     }
 
-    // =====================================================
     // APPLY IMAGE ORDER (edit)
     // Reorders existing images and appends new ones according to the
     // imageOrder tokens sent by the gallery UI:
@@ -184,13 +179,11 @@ public class ProductService extends GenericServiceBase<Product, Long> {
     //   "N{newIndex}"   → new uploaded image (index into dto.newImages)
     // sortOrder is assigned sequentially; the first image becomes primary.
     // Falls back to legacy append behaviour when imageOrder is empty.
-    // =====================================================
     private void applyImageOrder(Product product, ProductUpdateDTO dto) throws IOException {
 
         List<MultipartFile> newImages = dto.getNewImages() != null ? dto.getNewImages() : List.of();
         List<String> order = dto.getImageOrder();
 
-        // ── Legacy fallback: no explicit order → append new images after existing ──
         if (order == null || order.isEmpty()) {
             if (!newImages.isEmpty()) {
                 int baseOrder = product.getImages().stream()
@@ -202,7 +195,6 @@ public class ProductService extends GenericServiceBase<Product, Long> {
             return;
         }
 
-        // ── Upload all new images first (index aligns with "N{k}" tokens) ──
         List<ProductImage> uploaded = new ArrayList<>();
         for (MultipartFile file : newImages) {
             if (file == null || file.isEmpty()) {
@@ -256,11 +248,9 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         }
     }
 
-    // =====================================================
     // UPDATE VARIANTS — BUG-02 FIX
     // For existing variants: update in-place (do NOT call addVariant again).
     // For new variants: create and add via addVariant.
-    // =====================================================
     private void updateVariants(Product product, List<VariantDTO> variantDTOs) {
 
         if (variantDTOs == null) {
@@ -311,9 +301,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         }
     }
 
-    // =====================================================
     // DELETE PRODUCT
-    // =====================================================
     @Transactional
     @CacheEvict(value = {"bestSellers", "tryOnProducts"}, allEntries = true)
     public void deleteProduct(Long productId) {
@@ -348,9 +336,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
     }
 
-    // =====================================================
     // SAVE IMAGES
-    // =====================================================
     private void saveImages(Product product,
             List<MultipartFile> files,
             Integer primaryIndex,
@@ -376,10 +362,8 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         }
     }
 
-    // =====================================================
     // SLUG GENERATION — race condition handled by catching
     // DataIntegrityViolationException at save time.
-    // =====================================================
     private String generateUniqueSlug(String name) {
         String baseSlug = toSlug(name);
         String slug = baseSlug;
@@ -399,9 +383,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         return slug;
     }
 
-    // =====================================================
     // QUERY METHODS
-    // =====================================================
     public Product findBySlug(String slug) {
         return productRepository.findBySlug(slug)
                 .orElseThrow(() -> new ProductNotFoundException(slug));
@@ -430,12 +412,10 @@ public class ProductService extends GenericServiceBase<Product, Long> {
         );
     }
 
-    // =====================================================
     // FULL-TEXT SEARCH (MySQL/MariaDB FULLTEXT) + AUTOCOMPLETE
     // Dùng cho ô tìm kiếm / gợi ý từ khóa. Thử MATCH AGAINST trước
     // (xếp theo relevance), nếu lỗi/không có kết quả thì fallback
     // LIKE qua Specification — đảm bảo luôn trả kết quả.
-    // =====================================================
     @Transactional(readOnly = true)
     public List<Product> fullTextSearch(String query, int limit) {
         if (query == null || query.isBlank()) {

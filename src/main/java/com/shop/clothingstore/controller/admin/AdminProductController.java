@@ -66,14 +66,12 @@ public class AdminProductController extends AdminBaseController {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
     // LIST PRODUCTS
     // BUG FIX: template sent name="search" but controller read
     //          "keyword" — now both controller AND template use
     //          "keyword" consistently.
     // Added:   categoryId filter, status (active/inactive) filter,
     //          stock filter, sort option.
-    // ─────────────────────────────────────────────────────────
     @GetMapping
     public String listProducts(
             @RequestParam(defaultValue = "0") int page,
@@ -138,9 +136,7 @@ public class AdminProductController extends AdminBaseController {
         return "admin/products/index";
     }
 
-    // ===============================
     // SHOW CREATE FORM
-    // ===============================
     @GetMapping("/create")
     public String showCreateForm(Model model, HttpServletRequest request) {
 
@@ -157,9 +153,7 @@ public class AdminProductController extends AdminBaseController {
                 : "redirect:/admin/products?modal=create&wide=1";
     }
 
-    // ===============================
     // CREATE PRODUCT
-    // ===============================
     @PostMapping("/create")
     public Object createProduct(
             @Valid @ModelAttribute("productDTO") ProductCreateDTO dto,
@@ -201,9 +195,7 @@ public class AdminProductController extends AdminBaseController {
                 : "Please check the form and try again.";
     }
 
-    // ===============================
     // DELETE PRODUCT
-    // ===============================
     @DeleteMapping("/{id}")
     public String deleteProduct(
             @PathVariable Long id,
@@ -223,9 +215,7 @@ public class AdminProductController extends AdminBaseController {
         return "redirect:/admin/products";
     }
 
-    // ===============================
     // SHOW EDIT FORM
-    // ===============================
     @GetMapping("/{id}/edit")
     public String showEditForm(
             @PathVariable Long id,
@@ -287,9 +277,7 @@ public class AdminProductController extends AdminBaseController {
         }
     }
 
-    // ===============================
     // UPDATE PRODUCT
-    // ===============================
     @PostMapping("/{id}")
     public Object updateProduct(
             @PathVariable Long id,

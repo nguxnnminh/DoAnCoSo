@@ -9,7 +9,7 @@
 
 | Module | Tính năng nổi bật |
 |--------|------------------|
-| Auth | Đăng ký/đăng nhập web + API · JWT · reset mật khẩu email · rate limiting 5/IP/15min |
+| Auth | Đăng ký/đăng nhập web + API · JWT · reset mật khẩu email · rate limit login 10 / register 5 (IP/15min) |
 | Sản phẩm | CRUD · variants (size/màu/giá/stock) · gallery ảnh kéo-thả sort_order · full-text search |
 | Đơn hàng | COD · ship free ≥500k · coupon · tự hủy / yêu cầu hủy · 6 trạng thái |
 | Coupon | PERCENTAGE/FIXED · thời hạn · ngưỡng đơn · user-specific · referral reward |
@@ -47,8 +47,32 @@
 - `POST /api/auth/reset-password` → validate token + expiry → đặt mật khẩu mới
 
 ### 1.6 Rate limiting
-- `LoginRateLimitFilter`: tối đa **5 lần sai / IP / 15 phút**
+- `LoginRateLimitFilter`: đăng nhập tối đa **10 lần / IP / 15 phút**; đăng ký **5 lần / IP / 15 phút** (trả HTTP 429 khi vượt)
 - Chạy trước JWT filter (từ chối sớm, tiết kiệm tài nguyên)
+
+### 1.6b Phân quyền: Guest (khách vãng lai) vs User (có tài khoản)
+> Khách **chưa đăng nhập vẫn mua được** ở phía backend/web; điểm khác biệt nằm ở các tính năng gắn với tài khoản và ở chỗ **app mobile bắt đăng nhập trước khi checkout**.
+
+| Chức năng | Guest — Web/API | Guest — Mobile | User (đăng nhập) |
+|---|---|---|---|
+| Duyệt / tìm / lọc sản phẩm, chi tiết, gợi ý | ✓ | ✓ | ✓ |
+| Giỏ hàng (session-based) | ✓ | ✓ | ✓ |
+| AI Chatbot · Virtual Try-On | ✓ | ✓ | ✓ |
+| Kiểm tra coupon công khai (`/api/coupons/validate`) | ✓ | ✓ | ✓ |
+| **Đặt hàng (checkout COD)** | ✓ — đơn **không gắn tài khoản** (`actor = null`) | ✗ — router chặn `/checkout` → ép `/login` | ✓ — đơn **gắn tài khoản** |
+| Đề xuất coupon ở checkout (`/api/coupons/available`) | rỗng (không có user) | rỗng | ✓ danh sách coupon của user |
+| Coupon user-specific (welcome/referral) | ✗ | ✗ | ✓ |
+| Lịch sử đơn (`/my-orders`, `/api/orders/my`) | ✗ | ✗ | ✓ |
+| Wishlist · Hồ sơ · Đổi mật khẩu | ✗ | ✗ | ✓ |
+| Coupon của tôi (`/api/coupons/my`) | ✗ | ✗ | ✓ |
+| Viết đánh giá (sau đơn `COMPLETED`) | ✗ | ✗ | ✓ |
+| Thông báo (SSE + danh sách) · Referral | ✗ | ✗ | ✓ |
+
+- **Cơ chế thực thi**:
+  - Web (chain 2): `/checkout/**`, `/cart/**`, `/products/**` là `permitAll`; `/my-orders`, `/wishlist/**`, `/profile`, `/orders/**`, `/reviews/**`, `/my-coupons` yêu cầu `authenticated`.
+  - API (chain 1): `/api/cart/**`, `POST /api/orders/checkout`, `/api/coupons/validate`, `/api/coupons/available` là `permitAll`; `/api/orders/my`, `/api/wishlist/**`, `/api/profile/**`, `/api/coupons/my`, `/api/reviews/**`, `/api/notifications/**` yêu cầu JWT.
+  - Mobile (GoRouter `redirect`): các tiền tố `/checkout`, `/orders`, `/profile`, `/wishlist`, `/notifications`, `/coupons` bị chặn nếu chưa đăng nhập → chuyển `/login?redirect=...`. Vì vậy **mobile không hỗ trợ guest checkout** (khác web/API).
+  - Đơn của guest (web) không gắn `actor` nên **không tra cứu lại được** qua lịch sử đơn hàng.
 
 ### 1.7 Security headers
 - `X-Frame-Options: DENY`
@@ -108,7 +132,7 @@
 ## 4. Thanh toán & Đặt hàng
 
 ### 4.1 Checkout
-- `POST /api/orders/checkout` — public (hỗ trợ guest + đã đăng nhập)
+- `POST /api/orders/checkout` — public (hỗ trợ guest + đã đăng nhập). Guest tạo đơn với `actor = null` (không gắn tài khoản, không tra cứu lại được). **App mobile** chặn `/checkout` khi chưa đăng nhập (xem [§1.6b](#16b-phân-quyền-guest-khách-vãng-lai-vs-user-có-tài-khoản)) nên trên mobile chỉ user mới checkout được.
 - Kiểm tra tồn kho thực (lock variant row, throw `OutOfStockException` nếu hết)
 - `FREE_SHIP_THRESHOLD = 500,000₫` → ship free; dưới ngưỡng: `SHIP_FEE = 30,000₫`
 - Validate và apply coupon nếu truyền `couponCode`
@@ -148,6 +172,8 @@ PENDING → PROCESSING → SHIPPING → COMPLETED
 - Rating: 1–5 sao (double) · comment: ≤1000 ký tự
 - Ảnh đính kèm: tối đa 5 URL lưu trong bảng `review_images` (@ElementCollection)
 - Hiển thị trên trang chi tiết sản phẩm
+- **Web**: form `POST /reviews/{orderItemId}` (multipart, có upload ảnh) → redirect
+- **API (mobile/AJAX)**: `POST /api/reviews/{orderItemId}` body `{ rating, comment }` → JSON, dùng **chung** `ReviewService.createReview`. `OrderResponse.OrderItemInfo` trả kèm `id` (orderItemId) + cờ `reviewed` để client ẩn nút khi đã đánh giá.
 
 ---
 
@@ -169,7 +195,11 @@ PENDING → PROCESSING → SHIPPING → COMPLETED
 
 ### 6.4 API
 - `POST /api/coupons/validate` — kiểm tra (không tăng `usageCount`)
+- `GET /api/coupons/available?orderTotal=` — coupon **đề xuất** cho đơn hiện tại (đã lọc usable + thỏa minOrder, xếp giảm nhiều nhất trước; phần tử đầu là "Recommended"). Public, trả rỗng nếu chưa đăng nhập. Dùng `CouponService.getAvailableCouponsForUser` — cùng nguồn với web checkout.
 - `GET /api/coupons/my` — xem coupon của mình (general + user-specific)
+
+> Cả 3 endpoint trả `discountType` (PERCENTAGE/FIXED) và `discountDisplay` (chuỗi "20%" hoặc
+> "100,000₫" từ `CouponDisplayDTO.getDiscountDisplay()`) để web + mobile hiển thị %/₫ thống nhất.
 
 ---
 
@@ -344,6 +374,13 @@ Mọi thao tác Thêm / Sửa / Xem chi tiết mở trong **modal làm mờ nề
 | Profile | Profile view/edit · Change password |
 | Wishlist | Wishlist |
 | Notifications | Notification list |
+| Coupon | My Coupons (hiển thị %/₫ đúng theo `discountDisplay`) |
+
+### Tính ngang bằng với web (parity)
+- **Checkout** đề xuất coupon khả dụng giống web: gọi `GET /api/coupons/available?orderTotal=`, hiển thị danh sách thẻ chọn nhanh (thẻ đầu = "Recommended") + ô nhập mã thủ công.
+- **My Coupons** hiển thị mức giảm đúng định dạng (`20%` / `100,000₫`) qua `discountDisplay`.
+- **Review**: gửi qua `POST /api/reviews/{orderItemId}` (cùng `ReviewService` với web); ẩn nút khi item đã `reviewed`.
+- **Giỏ hàng/đặt hàng**: cùng `CartService` (session) + `CheckoutService` (free-ship ≥500k, coupon, trừ kho có khóa) như web.
 
 ---
 

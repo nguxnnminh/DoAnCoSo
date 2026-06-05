@@ -72,6 +72,7 @@ public class SecurityConfig {
                         "/api/recommendations/**",
                         "/api/chatbot/**",
                         "/api/coupons/validate",
+                        "/api/coupons/available",
                         "/api/tryon/**"
                 ).permitAll()
                 .requestMatchers("/api/notifications/**").authenticated()

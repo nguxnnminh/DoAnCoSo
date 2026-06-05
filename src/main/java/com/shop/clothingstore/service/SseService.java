@@ -32,9 +32,7 @@ public class SseService {
     private final Map<Long, List<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
     private final List<SseEmitter> adminEmitters = new CopyOnWriteArrayList<>();
 
-    // ─────────────────────────────────────────────────────────────
     // SUBSCRIBE
-    // ─────────────────────────────────────────────────────────────
     public SseEmitter subscribe(Long userId, boolean isAdmin) {
         SseEmitter emitter = new SseEmitter(TIMEOUT_MS);
 
@@ -75,9 +73,7 @@ public class SseService {
         adminEmitters.remove(emitter);
     }
 
-    // ─────────────────────────────────────────────────────────────
     // PUSH
-    // ─────────────────────────────────────────────────────────────
     public void pushToUser(Long userId, String eventName, Object data) {
         if (userId == null) {
             return;

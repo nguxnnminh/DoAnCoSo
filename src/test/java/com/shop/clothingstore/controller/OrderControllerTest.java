@@ -65,7 +65,6 @@ class OrderControllerTest {
         return u;
     }
 
-    // ── MY ORDERS ────────────────────────────────────────────
     @Test
     @DisplayName("GET /my-orders lists orders for the user")
     void myOrders_RendersView() throws Exception {
@@ -86,7 +85,6 @@ class OrderControllerTest {
                 .andExpect(redirectedUrl("/login"));
     }
 
-    // ── ORDER DETAIL ─────────────────────────────────────────
     @Test
     @DisplayName("GET /orders/{id} shows detail for the owner")
     void orderDetail_Owner_RendersView() throws Exception {
@@ -130,7 +128,6 @@ class OrderControllerTest {
                 .andExpect(redirectedUrl("/login"));
     }
 
-    // ── SELF CANCEL ──────────────────────────────────────────
     @Test
     @DisplayName("POST /orders/{id}/cancel cancels and redirects to detail")
     void cancelOrder_Success() throws Exception {
@@ -164,7 +161,6 @@ class OrderControllerTest {
                 .andExpect(redirectedUrl("/login"));
     }
 
-    // ── CANCEL REQUEST ───────────────────────────────────────
     @Test
     @DisplayName("POST /orders/{id}/cancel-request submits and redirects")
     void requestCancel_Success() throws Exception {

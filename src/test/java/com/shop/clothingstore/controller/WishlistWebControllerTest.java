@@ -66,7 +66,6 @@ class WishlistWebControllerTest {
         return u;
     }
 
-    // ── VIEW ─────────────────────────────────────────────────
     @Test
     @DisplayName("GET /wishlist renders the wishlist page")
     void viewWishlist_ReturnsView() throws Exception {
@@ -80,7 +79,6 @@ class WishlistWebControllerTest {
                 .andExpect(model().attributeExists("wishlistItems"));
     }
 
-    // ── ADD ──────────────────────────────────────────────────
     @Test
     @DisplayName("POST /wishlist/{id}/add adds and redirects back")
     void addToWishlist_Redirects() throws Exception {
@@ -106,7 +104,6 @@ class WishlistWebControllerTest {
                 .andExpect(redirectedUrl("http://localhost:80/product/essential-tee"));
     }
 
-    // ── REMOVE ───────────────────────────────────────────────
     @Test
     @DisplayName("POST /wishlist/{id}/remove removes and redirects back")
     void removeFromWishlist_Redirects() throws Exception {

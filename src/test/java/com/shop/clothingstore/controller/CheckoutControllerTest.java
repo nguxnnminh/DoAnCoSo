@@ -64,7 +64,6 @@ class CheckoutControllerTest {
         return new UsernamePasswordAuthenticationToken("user@test.com", null, List.of());
     }
 
-    // ── PAGE ─────────────────────────────────────────────────
     @Test
     @DisplayName("GET /checkout renders checkout page for guest")
     void checkoutPage_Guest_RendersView() throws Exception {
@@ -89,7 +88,6 @@ class CheckoutControllerTest {
                 .andExpect(model().attributeExists("user"));
     }
 
-    // ── VALIDATION ───────────────────────────────────────────
     @Test
     @DisplayName("POST /checkout blank name → flash error, back to checkout")
     void processCheckout_BlankName_Rejected() throws Exception {
@@ -123,7 +121,6 @@ class CheckoutControllerTest {
                 .andExpect(flash().attributeExists("error"));
     }
 
-    // ── SUCCESS ──────────────────────────────────────────────
     @Test
     @DisplayName("POST /checkout valid → places order, clears cart, redirects to success")
     void processCheckout_Valid_Success() throws Exception {
@@ -154,7 +151,6 @@ class CheckoutControllerTest {
                 .andExpect(flash().attribute("error", "Insufficient stock"));
     }
 
-    // ── SUCCESS PAGE GUARD ───────────────────────────────────
     @Test
     @DisplayName("GET /checkout/success without orderId redirects home")
     void checkoutSuccess_NoOrderId_RedirectsHome() throws Exception {

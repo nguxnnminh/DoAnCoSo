@@ -29,7 +29,6 @@ public class AdminCouponController extends AdminBaseController {
         this.couponService = couponService;
     }
 
-    // ── LIST ────────────────────────────────────────────
     @GetMapping
     public String list(@RequestParam(required = false) String search,
                        @RequestParam(required = false) String status,
@@ -60,7 +59,6 @@ public class AdminCouponController extends AdminBaseController {
         return "admin/coupons/index";
     }
 
-    // ── CREATE FORM ──────────────────────────────────────
     @GetMapping("/create")
     public String createForm(Model model, HttpServletRequest request) {
         model.addAttribute("title", "Create Coupon");
@@ -75,7 +73,6 @@ public class AdminCouponController extends AdminBaseController {
                 : "redirect:/admin/coupons?modal=create";
     }
 
-    // ── CREATE POST ──────────────────────────────────────
     @PostMapping("/create")
     public Object create(CouponFormDTO dto, RedirectAttributes ra, HttpServletRequest request) {
         boolean ajax = isAjax(request);
@@ -103,7 +100,6 @@ public class AdminCouponController extends AdminBaseController {
         return ok(ajax, ra, "Coupon '" + code + "' created successfully!", "/admin/coupons");
     }
 
-    // ── EDIT FORM ─────────────────────────────────────────
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra,
                            HttpServletRequest request) {
@@ -126,7 +122,6 @@ public class AdminCouponController extends AdminBaseController {
         });
     }
 
-    // ── UPDATE POST ──────────────────────────────────────
     @PostMapping("/{id}")
     public Object update(@PathVariable Long id, CouponFormDTO dto, RedirectAttributes ra,
                          HttpServletRequest request) {
@@ -155,7 +150,6 @@ public class AdminCouponController extends AdminBaseController {
         return ok(ajax, ra, "Coupon updated successfully!", "/admin/coupons");
     }
 
-    // ── TOGGLE ACTIVE ────────────────────────────────────
     @PostMapping("/{id}/toggle")
     public String toggle(@PathVariable Long id, RedirectAttributes ra) {
         couponService.findById(id).ifPresentOrElse(coupon -> {
@@ -167,7 +161,6 @@ public class AdminCouponController extends AdminBaseController {
         return "redirect:/admin/coupons";
     }
 
-    // ── DELETE POST ──────────────────────────────────────
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes ra) {
         try {
@@ -179,7 +172,6 @@ public class AdminCouponController extends AdminBaseController {
         return "redirect:/admin/coupons";
     }
 
-    // ── MAPPING HELPERS ──────────────────────────────────
     private Coupon mapFromDTO(Coupon coupon, CouponFormDTO dto) {
         coupon.setDescription(dto.getDescription());
         coupon.setDiscountType(dto.getDiscountType());

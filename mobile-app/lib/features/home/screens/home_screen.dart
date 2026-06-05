@@ -65,7 +65,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // ── HERO SLIDER ─────────────────────────────────────────────
           SliverToBoxAdapter(
             child: SizedBox(
               height: MediaQuery.of(context).size.height * 0.82,
@@ -108,10 +107,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // ── TRUST BAR ─────────────────────────────────────────────────
           const SliverToBoxAdapter(child: _TrustBar()),
 
-          // ── EDITORIAL STRIP ───────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
@@ -135,7 +132,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // ── BEST SELLERS ──────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 36, 20, 20),
@@ -188,10 +184,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // ── MARQUEE ───────────────────────────────────────────────────
           const SliverToBoxAdapter(child: _Marquee()),
 
-          // ── CATEGORIES ────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 36, 20, 20),
@@ -236,14 +230,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-// ── Slide data ────────────────────────────────────────────────────────────────
-
 class _Slide {
   final String eyebrow, title, sub, action, btnLabel, bg;
   const _Slide({required this.eyebrow, required this.title, required this.sub, required this.action, required this.btnLabel, required this.bg});
 }
-
-// ── Hero slide ────────────────────────────────────────────────────────────────
 
 class _HeroSlide extends StatelessWidget {
   final _Slide slide;
@@ -309,8 +299,6 @@ class _ArrowBtn extends StatelessWidget {
       );
 }
 
-// ── Trust bar ─────────────────────────────────────────────────────────────────
-
 class _TrustBar extends StatelessWidget {
   const _TrustBar();
 
@@ -345,8 +333,6 @@ class _TrustBar extends StatelessWidget {
     );
   }
 }
-
-// ── Best seller card ──────────────────────────────────────────────────────────
 
 class _BestSellerCard extends StatelessWidget {
   final Product product;
@@ -391,8 +377,6 @@ class _BestSellerCard extends StatelessWidget {
   }
 }
 
-// ── Marquee ───────────────────────────────────────────────────────────────────
-
 class _Marquee extends StatelessWidget {
   const _Marquee();
 
@@ -407,8 +391,6 @@ class _Marquee extends StatelessWidget {
     );
   }
 }
-
-// ── Category tile ─────────────────────────────────────────────────────────────
 
 class _CategoryTile extends StatelessWidget {
   final String name, imageUrl;

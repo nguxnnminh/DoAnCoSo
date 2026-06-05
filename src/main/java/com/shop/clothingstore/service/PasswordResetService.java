@@ -42,16 +42,12 @@ public class PasswordResetService {
         return tokenRepository.save(token);
     }
 
-    // =====================================================
     // FIND TOKEN
-    // =====================================================
     public Optional<PasswordResetToken> findByToken(String token) {
         return tokenRepository.findByToken(token);
     }
 
-    // =====================================================
     // DELETE TOKEN
-    // =====================================================
     @Transactional
     public void deleteToken(PasswordResetToken token) {
         tokenRepository.delete(token);

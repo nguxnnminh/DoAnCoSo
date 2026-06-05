@@ -46,9 +46,7 @@ class ProductApiControllerTest {
     @MockitoBean
     private CustomUserDetailsService customUserDetailsService;
 
-    // =============================================================
     // GET /api/products
-    // =============================================================
     @Test
     @DisplayName("GET /api/products returns paginated products")
     void getProducts_Default_ReturnsOk() throws Exception {
@@ -75,9 +73,7 @@ class ProductApiControllerTest {
                 .andExpect(jsonPath("$.content[0].name").value("Graphic Tee"));
     }
 
-    // =============================================================
     // GET /api/products/{id}
-    // =============================================================
     @Test
     @DisplayName("GET /api/products/{id} returns product details")
     void getProductById_Exists_ReturnsOk() throws Exception {
@@ -99,9 +95,7 @@ class ProductApiControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // =============================================================
     // GET /api/products/{id}/similar
-    // =============================================================
     @Test
     @DisplayName("GET /api/products/{id}/similar returns similar products")
     void getSimilarProducts_ReturnsOk() throws Exception {
@@ -113,9 +107,7 @@ class ProductApiControllerTest {
                 .andExpect(jsonPath("$[0].name").value("Similar Tee"));
     }
 
-    // =============================================================
     // Helper — setId() is protected in BaseEntity; use reflection
-    // =============================================================
     private Product mockProduct(Long id, String name) {
         Category category = new Category();
         injectId(category, 1L);

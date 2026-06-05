@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -32,9 +33,7 @@ public class CartService {
         return request.getSession(true);
     }
 
-    // =====================================================
     // GET CART
-    // =====================================================
     @SuppressWarnings("unchecked")
     public List<CartItemDTO> getCart() {
         HttpSession session = getSession();
@@ -46,9 +45,11 @@ public class CartService {
         return cart;
     }
 
-    // =====================================================
     // ADD TO CART
-    // =====================================================
+    // readOnly transaction giữ Hibernate session mở trong suốt method để
+    // truy cập collection lazy product.getImages() (OSIV đã tắt) không bị
+    // LazyInitializationException khi build CartItemDTO.
+    @Transactional(readOnly = true)
     public void addToCart(Long variantId, int quantity) {
         if (variantId == null || quantity < 1) {
             throw new IllegalStateException("Invalid request data");
@@ -108,9 +109,8 @@ public class CartService {
         session.setAttribute(CART_SESSION_KEY, cart);
     }
 
-    // =====================================================
     // UPDATE QUANTITY
-    // =====================================================
+    @Transactional(readOnly = true)
     public void updateQuantity(Long variantId, int quantity) {
         if (variantId == null || quantity < 1) {
             throw new IllegalStateException("Invalid request data");
@@ -144,9 +144,7 @@ public class CartService {
         }
     }
 
-    // =====================================================
     // REMOVE ITEM
-    // =====================================================
     public void remove(Long variantId) {
         HttpSession session = getSession();
 
@@ -160,16 +158,12 @@ public class CartService {
         session.setAttribute(CART_SESSION_KEY, cart);
     }
 
-    // =====================================================
     // CLEAR CART
-    // =====================================================
     public void clear() {
         getSession().removeAttribute(CART_SESSION_KEY);
     }
 
-    // =====================================================
     // TOTAL PRICE
-    // =====================================================
     public BigDecimal getTotal() {
         return getCart().stream()
                 .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))

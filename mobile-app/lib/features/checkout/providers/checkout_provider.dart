@@ -3,6 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../models/order.dart';
 
+/// Coupon được hệ thống đề xuất (đã lọc khả dụng cho tổng đơn) — giống web.
+class CouponSuggestion {
+  final String code;
+  final String? description;
+  final String discountDisplay; // "20%" hoặc "100,000₫"
+  final double? minOrderAmount;
+  final String? expiryDate;
+
+  const CouponSuggestion({
+    required this.code,
+    this.description,
+    required this.discountDisplay,
+    this.minOrderAmount,
+    this.expiryDate,
+  });
+
+  factory CouponSuggestion.fromJson(Map<String, dynamic> j) => CouponSuggestion(
+        code: j['code'] as String,
+        description: j['description'] as String?,
+        discountDisplay: (j['discountDisplay'] as String?) ?? '',
+        minOrderAmount: (j['minOrderAmount'] as num?)?.toDouble(),
+        expiryDate: j['expiryDate'] as String?,
+      );
+}
+
 class CheckoutState {
   final bool loading;
   final String? error;
@@ -10,6 +35,7 @@ class CheckoutState {
   final String couponCode;
   final double? discount;
   final String? couponMessage;
+  final List<CouponSuggestion> availableCoupons;
 
   const CheckoutState({
     this.loading = false,
@@ -18,6 +44,7 @@ class CheckoutState {
     this.couponCode = '',
     this.discount,
     this.couponMessage,
+    this.availableCoupons = const [],
   });
 
   CheckoutState copyWith({
@@ -27,6 +54,7 @@ class CheckoutState {
     String? couponCode,
     double? discount,
     String? couponMessage,
+    List<CouponSuggestion>? availableCoupons,
   }) =>
       CheckoutState(
         loading: loading ?? this.loading,
@@ -35,6 +63,7 @@ class CheckoutState {
         couponCode: couponCode ?? this.couponCode,
         discount: discount ?? this.discount,
         couponMessage: couponMessage,
+        availableCoupons: availableCoupons ?? this.availableCoupons,
       );
 }
 
@@ -42,6 +71,19 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
   final ApiClient _api;
 
   CheckoutNotifier(this._api) : super(const CheckoutState());
+
+  /// Tải danh sách coupon hệ thống đề xuất cho tổng đơn hiện tại (giống web).
+  Future<void> loadAvailableCoupons(double orderTotal) async {
+    try {
+      final res = await _api.dio.get('/api/coupons/available', queryParameters: {'orderTotal': orderTotal});
+      final list = (res.data as List)
+          .map((e) => CouponSuggestion.fromJson(e as Map<String, dynamic>))
+          .toList();
+      state = state.copyWith(availableCoupons: list);
+    } on DioException {
+      state = state.copyWith(availableCoupons: const []);
+    }
+  }
 
   Future<bool> validateCoupon(String code, double orderTotal) async {
     try {

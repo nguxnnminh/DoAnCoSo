@@ -73,7 +73,6 @@ class ProfileControllerTest {
         return u;
     }
 
-    // ── VIEW ─────────────────────────────────────────────────
     @Test
     @DisplayName("GET /profile renders profile for the user")
     void profilePage_RendersView() throws Exception {
@@ -85,7 +84,6 @@ class ProfileControllerTest {
                 .andExpect(model().attributeExists("user"));
     }
 
-    // ── UPDATE ───────────────────────────────────────────────
     @Test
     @DisplayName("POST /profile/update valid → saves and flashes success")
     void updateProfile_Valid_Success() throws Exception {
@@ -120,7 +118,6 @@ class ProfileControllerTest {
                 .andExpect(flash().attributeExists("error"));
     }
 
-    // ── CHANGE PASSWORD ──────────────────────────────────────
     @Test
     @DisplayName("POST /profile/change-password valid → success")
     void changePassword_Valid_Success() throws Exception {

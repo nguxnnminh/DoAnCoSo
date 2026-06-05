@@ -24,6 +24,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final _noteCtrl = TextEditingController();
   final _couponCtrl = TextEditingController();
 
+  bool _couponsLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +36,23 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         if (_addressCtrl.text.isEmpty && p.address != null) _addressCtrl.text = p.address!;
       });
     }, fireImmediately: true);
+
+    // Tải coupon hệ thống đề xuất (giống web) ngay khi có tổng giỏ hàng.
+    ref.listenManual(cartProvider, (_, next) {
+      next.whenData((cart) {
+        if (!_couponsLoaded && cart.total > 0) {
+          _couponsLoaded = true;
+          ref.read(checkoutProvider.notifier).loadAvailableCoupons(cart.total);
+        }
+      });
+    }, fireImmediately: true);
+  }
+
+  Future<void> _applySuggested(String code) async {
+    _couponCtrl.text = code;
+    final cart = ref.read(cartProvider).valueOrNull;
+    if (cart == null) return;
+    await ref.read(checkoutProvider.notifier).validateCoupon(code, cart.total);
   }
 
   @override
@@ -91,6 +110,61 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             const SizedBox(height: 32),
             _SectionLabel('Coupon Code'),
             const SizedBox(height: 12),
+
+            // Coupon đề xuất (giống web): danh sách khả dụng, cái đầu = "Recommended".
+            if (checkout.availableCoupons.isNotEmpty) ...[
+              ...checkout.availableCoupons.asMap().entries.map((e) {
+                final i = e.key;
+                final c = e.value;
+                final selected = checkout.couponCode == c.code && checkout.discount != null;
+                return GestureDetector(
+                  onTap: () => _applySuggested(c.code),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.backgroundDark,
+                      border: Border.all(color: selected ? AppColors.accent : AppColors.borderDark),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, size: 18, color: selected ? AppColors.accent : AppColors.textDim),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(c.discountDisplay, style: const TextStyle(fontFamily: 'BebasNeue', fontSize: 18, letterSpacing: 0.04, color: AppColors.textPrimary)),
+                                  const SizedBox(width: 8),
+                                  Text(c.code, style: const TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600, letterSpacing: 0.1)),
+                                  if (i == 0) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(border: Border.all(color: AppColors.accent.withAlpha(120)), color: AppColors.accent.withAlpha(20)),
+                                      child: const Text('RECOMMENDED', style: TextStyle(fontFamily: 'DMSans', fontSize: 7, letterSpacing: 0.2, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              if (c.minOrderAmount != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text('Min order: ${formatPrice(c.minOrderAmount!)}', style: const TextStyle(fontFamily: 'DMSans', fontSize: 10, color: AppColors.textDim)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 4),
+            ],
+
             Row(
               children: [
                 Expanded(child: NovaInput(controller: _couponCtrl, hint: 'Enter coupon code', textInputAction: TextInputAction.done, onSubmitted: _validateCoupon)),

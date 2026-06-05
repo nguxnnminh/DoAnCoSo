@@ -41,7 +41,6 @@ public class Order extends AbstractTransaction<OrderStatus, User> {
     @Column(length = 500)
     private String cancelReason;
 
-    // ===== GETTER SETTER =====
     public List<OrderItem> getItems() {
         return items;
     }

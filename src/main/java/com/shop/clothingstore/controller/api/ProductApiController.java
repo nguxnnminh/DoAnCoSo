@@ -36,9 +36,7 @@ public class ProductApiController {
         this.recommendationService = recommendationService;
     }
 
-    // =====================================================
     // GET /api/products
-    // =====================================================
     @GetMapping
     public ResponseEntity<Map<String, Object>> getProducts(
             @RequestParam(defaultValue = "0") int page,
@@ -74,10 +72,8 @@ public class ProductApiController {
         return ResponseEntity.ok(response);
     }
 
-    // =====================================================
     // GET /api/products/suggest?q=ao  (autocomplete full-text)
     // Trả tối đa 8 gợi ý sản phẩm (id, name, slug, giá, ảnh) xếp theo relevance.
-    // =====================================================
     @GetMapping("/suggest")
     public ResponseEntity<List<ProductResponse>> suggest(
             @RequestParam(name = "q", required = false) String q,
@@ -93,9 +89,7 @@ public class ProductApiController {
         return ResponseEntity.ok(result);
     }
 
-    // =====================================================
     // GET /api/products/{id}
-    // =====================================================
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
         Product product = productService.findById(id)
@@ -103,9 +97,7 @@ public class ProductApiController {
         return ResponseEntity.ok(ProductResponse.from(product));
     }
 
-    // =====================================================
     // GET /api/products/{id}/similar
-    // =====================================================
     @GetMapping("/{id}/similar")
     public ResponseEntity<List<ProductResponse>> getSimilarProducts(
             @PathVariable Long id,

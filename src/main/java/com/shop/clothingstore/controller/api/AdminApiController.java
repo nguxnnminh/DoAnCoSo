@@ -51,10 +51,8 @@ public class AdminApiController {
         this.userService    = userService;
     }
 
-    // ─────────────────────────────────────────────────────────
     // GET /api/admin/stats/summary
     // Lightweight KPI snapshot for dashboard AJAX refresh.
-    // ─────────────────────────────────────────────────────────
     @GetMapping("/stats/summary")
     public ResponseEntity<Map<String, Object>> summary() {
         long totalOrders  = orderService.getAllOrders(
@@ -72,14 +70,12 @@ public class AdminApiController {
         ));
     }
 
-    // ─────────────────────────────────────────────────────────
     // POST /api/admin/orders/{id}/status
     // Body: { "status": "PROCESSING" }
     // Returns: { "id": 1, "newStatus": "PROCESSING", "success": true }
     //
     // Allows admin to change order status directly from the order
     // list via AJAX without navigating to the detail page.
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/orders/{id}/status")
     public ResponseEntity<?> updateOrderStatus(
             @PathVariable Long id,
@@ -119,14 +115,12 @@ public class AdminApiController {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
     // POST /api/admin/products/bulk-status
     // Body: { "ids": [1, 2, 3], "active": true }
     // Returns: { "updated": 3, "success": true }
     //
     // Bulk activate or deactivate a list of products.
     // Replaces the need to edit each product individually.
-    // ─────────────────────────────────────────────────────────
     @Transactional
     @PostMapping("/products/bulk-status")
     public ResponseEntity<?> bulkProductStatus(

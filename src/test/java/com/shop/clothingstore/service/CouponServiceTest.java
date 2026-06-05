@@ -55,9 +55,7 @@ class CouponServiceTest {
         fixedCoupon.setActive(true);
     }
 
-    // =====================================================
     // validateCoupon (read-only, no side effects)
-    // =====================================================
 
     @Test
     void validateCoupon_validPercentageCoupon_returnsCoupon() {
@@ -123,9 +121,7 @@ class CouponServiceTest {
         assertThat(result).isNull();
     }
 
-    // =====================================================
     // applyCoupon (with lock, increments usageCount)
-    // =====================================================
 
     @Test
     void applyCoupon_nullCode_returnsOriginalTotal() {
@@ -215,9 +211,7 @@ class CouponServiceTest {
         assertThat(percentageCoupon.getUsageCount()).isEqualTo(6);
     }
 
-    // =====================================================
     // Coupon entity — discount math
-    // =====================================================
 
     @Test
     void coupon_percentageDiscount_cappedAt100Percent() {

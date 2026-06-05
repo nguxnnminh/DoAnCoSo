@@ -32,7 +32,6 @@ public class ProductImage extends BaseEntity implements ItemImage {
     @JsonIgnore
     private Product product;
 
-    // ===== Implement ItemImage =====
     @Override
     public String getUrl() {
         return imageUrl;

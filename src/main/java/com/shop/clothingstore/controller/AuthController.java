@@ -48,13 +48,11 @@ public class AuthController {
         this.emailService = emailService;
     }
 
-    // ================= LOGIN =================
     @GetMapping("/login")
     public String loginPage() {
         return "auth/login";
     }
 
-    // ================= REGISTER =================
     @GetMapping("/register")
     public String registerPage(@RequestParam(name = "ref", required = false) String ref, Model model) {
         // Giữ mã giới thiệu (nếu có) để form gửi kèm khi submit
@@ -73,28 +71,23 @@ public class AuthController {
             RedirectAttributes redirectAttributes
     ) {
 
-        // ===== normalize email =====
         String normalizedEmail = email.toLowerCase().trim();
 
-        // ===== check email exists =====
         if (userService.existsByEmail(normalizedEmail)) {
             redirectAttributes.addFlashAttribute("error", "Email already exists");
             return "redirect:/register";
         }
 
-        // ===== check confirm password =====
         if (!password.equals(confirmPassword)) {
             redirectAttributes.addFlashAttribute("error", "Passwords do not match");
             return "redirect:/register";
         }
 
-        // ===== validate password basic =====
         if (password.length() < 8) {
             redirectAttributes.addFlashAttribute("error", "Password must be at least 8 characters");
             return "redirect:/register";
         }
 
-        // ===== create user (kèm mã giới thiệu nếu có) =====
         userService.registerUser(
                 normalizedEmail,
                 passwordEncoder.encode(password),
@@ -102,7 +95,6 @@ public class AuthController {
                 ref
         );
 
-        // ===== send confirmation email =====
         try {
             emailService.sendRegistrationEmail(normalizedEmail);
         } catch (Exception e) {
@@ -110,14 +102,12 @@ public class AuthController {
             log.warn("Registration email failed for {}", normalizedEmail, e);
         }
 
-        // ===== SUCCESS TOAST =====
         redirectAttributes.addFlashAttribute("success",
                 "Registration successful! Please log in.");
 
         return "redirect:/login";
     }
 
-    // ================= FORGOT PASSWORD PAGE =================
     @GetMapping("/forgot-password")
     public String forgotPasswordPage() {
         return "auth/forgot-password";
@@ -155,7 +145,6 @@ public class AuthController {
 
         return "redirect:/forgot-password";
     }
-    // ================= RESET PASSWORD =================
 
     @GetMapping("/reset-password")
     public String resetPasswordForm(

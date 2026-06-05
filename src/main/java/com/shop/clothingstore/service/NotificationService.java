@@ -28,9 +28,7 @@ public class NotificationService {
         this.sseService = sseService;
     }
 
-    // ─────────────────────────────────────────────────────────────────
     // CREATE
-    // ─────────────────────────────────────────────────────────────────
     // REQUIRES_NEW trên các method public (gọi từ OrderService/CheckoutService — bean khác,
     // nên proxy AOP áp dụng): thông báo chạy trong transaction RIÊNG, lỗi lưu notification
     // KHÔNG làm rollback nghiệp vụ chính (đặt đơn / đổi trạng thái).
@@ -102,9 +100,7 @@ public class NotificationService {
                 order.getId(), "Order");
     }
 
-    // ─────────────────────────────────────────────────────────────────
     // READ
-    // ─────────────────────────────────────────────────────────────────
     public List<Notification> getRecent(User user, int limit) {
         return notificationRepository.findByUserOrderByCreatedAtDesc(user)
                 .stream().limit(limit).toList();
@@ -118,9 +114,7 @@ public class NotificationService {
         return notificationRepository.countByUserAndIsReadFalse(user);
     }
 
-    // ─────────────────────────────────────────────────────────────────
     // MARK READ
-    // ─────────────────────────────────────────────────────────────────
     @Transactional
     public boolean markAsRead(Long notificationId, User user) {
         if (notificationId == null) {
@@ -145,9 +139,7 @@ public class NotificationService {
         log.debug("Marked {} notifications as read | user={}", unread.size(), user.getEmail());
     }
 
-    // ─────────────────────────────────────────────────────────────────
     // Internal
-    // ─────────────────────────────────────────────────────────────────
     private void create(User user, String title, String message,
             String type, Long referenceId, String referenceType) {
         try {

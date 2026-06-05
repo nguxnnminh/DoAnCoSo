@@ -23,9 +23,7 @@ public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    // =====================================================
     // 400 - Validation errors
-    // =====================================================
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException ex,
@@ -42,9 +40,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 400/401 - Illegal state (cart empty, invalid operation, unauthorized)
-    // =====================================================
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(
             IllegalStateException ex,
@@ -63,9 +59,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 400 - Bad input
-    // =====================================================
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex,
@@ -78,9 +72,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 401 - Bad credentials
-    // =====================================================
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiErrorResponse> handleBadCredentials(
             BadCredentialsException ex,
@@ -91,9 +83,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 404 - Resource not found (original DTO-based exception)
-    // =====================================================
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(
             ResourceNotFoundException ex,
@@ -104,9 +94,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 404 - Product not found (typed exception added in refactor)
-    // =====================================================
     @ExceptionHandler(ProductNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleProductNotFound(
             ProductNotFoundException ex,
@@ -117,9 +105,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 409 - Out of stock
-    // =====================================================
     @ExceptionHandler(OutOfStockException.class)
     public ResponseEntity<ApiErrorResponse> handleOutOfStock(
             OutOfStockException ex,
@@ -130,9 +116,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 422 - Invalid order state transition
-    // =====================================================
     @ExceptionHandler(InvalidOrderStateException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidOrderState(
             InvalidOrderStateException ex,
@@ -143,9 +127,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // Passthrough — ResponseStatusException (Spring MVC errors)
-    // =====================================================
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleResponseStatus(
             ResponseStatusException ex,
@@ -158,9 +140,7 @@ public class ApiExceptionHandler {
         );
     }
 
-    // =====================================================
     // 500 - Catch-all
-    // =====================================================
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneral(
             Exception ex,

@@ -55,7 +55,6 @@ public class Product extends BaseEntity implements SellableItem {
 
     private boolean active = true;
 
-    // ================= VIRTUAL TRY-ON =================
     @Column(name = "try_on_enabled")
     private boolean tryOnEnabled = false;
 
@@ -76,7 +75,6 @@ public class Product extends BaseEntity implements SellableItem {
     @Column(name = "total_sold")
     private Integer totalSold = 0;
 
-    // ================= VARIANTS =================
     @OneToMany(
             mappedBy = "product",
             cascade = CascadeType.ALL,
@@ -85,7 +83,6 @@ public class Product extends BaseEntity implements SellableItem {
     )
     private List<ProductVariant> productVariants = new ArrayList<>();
 
-    // ================= IMAGES =================
     // @OrderBy tells Hibernate to emit ORDER BY primary_image DESC, id ASC
     // in the secondary SELECT for this collection.
     // Must be Set (not List/bag) because productVariants is already a List;
@@ -98,8 +95,6 @@ public class Product extends BaseEntity implements SellableItem {
             fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC, primaryImage DESC, id ASC")
     private Set<ProductImage> images = new HashSet<>();
-
-    // ================= INTERFACE IMPLEMENTATION =================
 
     @Override
     public BigDecimal getMinPrice() {
@@ -139,8 +134,6 @@ public class Product extends BaseEntity implements SellableItem {
                         .thenComparingLong(img -> img.getId() != null ? img.getId() : Long.MAX_VALUE))
                 .collect(java.util.stream.Collectors.toList());
     }
-
-    // ================= HELPER METHODS =================
 
     public void addVariant(ProductVariant variant) {
         if (!productVariants.contains(variant)) {

@@ -37,18 +37,14 @@ public class UserApiController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // =====================================================
     // GET /api/profile
-    // =====================================================
     @GetMapping
     public ResponseEntity<ProfileResponse> getProfile(Principal principal) {
         User user = getUser(principal);
         return ResponseEntity.ok(ProfileResponse.from(user));
     }
 
-    // =====================================================
     // PUT /api/profile
-    // =====================================================
     @PutMapping
     public ResponseEntity<?> updateProfile(
             @Valid @RequestBody ProfileUpdateRequest request,
@@ -79,9 +75,7 @@ public class UserApiController {
         return ResponseEntity.ok(ProfileResponse.from(user));
     }
 
-    // =====================================================
     // POST /api/profile/change-password
-    // =====================================================
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,

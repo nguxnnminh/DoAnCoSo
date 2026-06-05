@@ -48,9 +48,7 @@ class WishlistApiControllerTest {
     @MockitoBean
     private CustomUserDetailsService customUserDetailsService;
 
-    // =============================================================
     // GET /api/wishlist
-    // =============================================================
     @Test
     @DisplayName("GET /api/wishlist returns items for authenticated user")
     void getWishlist_Authenticated_ReturnsItems() throws Exception {
@@ -81,9 +79,7 @@ class WishlistApiControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // =============================================================
     // POST /api/wishlist/{productId}
-    // =============================================================
     @Test
     @DisplayName("POST /api/wishlist/{productId} adds to wishlist")
     void addToWishlist_Authenticated_ReturnsOk() throws Exception {
@@ -104,9 +100,7 @@ class WishlistApiControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // =============================================================
     // DELETE /api/wishlist/{productId}
-    // =============================================================
     @Test
     @DisplayName("DELETE /api/wishlist/{productId} removes from wishlist")
     void removeFromWishlist_Authenticated_ReturnsOk() throws Exception {
@@ -127,9 +121,7 @@ class WishlistApiControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // =============================================================
     // Helpers
-    // =============================================================
 
     /** Build a mock user. setId() is protected in BaseEntity — use reflection. */
     private User mockUser() {

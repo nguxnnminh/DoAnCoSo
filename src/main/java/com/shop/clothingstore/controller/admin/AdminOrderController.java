@@ -31,11 +31,9 @@ public class AdminOrderController extends AdminBaseController {
         this.shipmentService = shipmentService;
     }
 
-    // ─────────────────────────────────────────────────────────
     // ORDER LIST — with keyword search + status + date range
     // BUG FIX: status param was accepted by template but ignored
     //          by controller. Now wired to searchOrders().
-    // ─────────────────────────────────────────────────────────
     @GetMapping("/admin/orders")
     public String orders(
             @RequestParam(defaultValue = "0") int page,
@@ -62,9 +60,7 @@ public class AdminOrderController extends AdminBaseController {
         return "admin/orders/index";
     }
 
-    // ─────────────────────────────────────────────────────────
     // ORDER DETAIL — includes shipment info
-    // ─────────────────────────────────────────────────────────
     @GetMapping("/admin/orders/{id}")
     public String orderDetail(
             @PathVariable Long id,
@@ -97,9 +93,7 @@ public class AdminOrderController extends AdminBaseController {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
     // UPDATE STATUS
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/status")
     public Object updateStatus(
             @PathVariable Long id,
@@ -119,9 +113,7 @@ public class AdminOrderController extends AdminBaseController {
         return ok(ajax, ra, "Order status updated successfully!", back);
     }
 
-    // ─────────────────────────────────────────────────────────
     // ACCEPT CANCEL REQUEST → CANCELLED + stock restored
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/cancel-accept")
     public Object acceptCancel(
             @PathVariable Long id,
@@ -140,9 +132,7 @@ public class AdminOrderController extends AdminBaseController {
         return ok(ajax, ra, "Cancellation request accepted. Order cancelled.", back);
     }
 
-    // ─────────────────────────────────────────────────────────
     // DENY CANCEL REQUEST → back to PROCESSING
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/cancel-deny")
     public Object denyCancel(
             @PathVariable Long id,
@@ -161,9 +151,7 @@ public class AdminOrderController extends AdminBaseController {
         return ok(ajax, ra, "Cancellation request denied. Order continues processing.", back);
     }
 
-    // ─────────────────────────────────────────────────────────
     // UPDATE SHIPMENT TRACKING
-    // ─────────────────────────────────────────────────────────
     @PostMapping("/admin/orders/{id}/shipment")
     public String updateTracking(
             @PathVariable Long id,

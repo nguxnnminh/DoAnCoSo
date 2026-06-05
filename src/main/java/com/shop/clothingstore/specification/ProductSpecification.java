@@ -18,9 +18,7 @@ public class ProductSpecification {
 
             List<Predicate> predicates = new ArrayList<>();
 
-            // ==================================================
             // SEARCH BY NAME — parameterized, no SQL injection
-            // ==================================================
             if (filter.getKeyword() != null && !filter.getKeyword().isBlank()) {
                 predicates.add(
                         cb.like(
@@ -30,9 +28,7 @@ public class ProductSpecification {
                 );
             }
 
-            // ==================================================
             // FILTER CATEGORY
-            // ==================================================
             if (filter.getCategoryId() != null) {
                 predicates.add(
                         cb.equal(
@@ -42,9 +38,7 @@ public class ProductSpecification {
                 );
             }
 
-            // ==================================================
             // FILTER SUB CATEGORY
-            // ==================================================
             if (filter.getSubCategoryId() != null) {
                 predicates.add(
                         cb.equal(
@@ -54,14 +48,12 @@ public class ProductSpecification {
                 );
             }
 
-            // ==================================================
             // FILTER PRICE — uses denormalized minPrice column.
             // Previously used a variant JOIN which caused:
             //   - Cartesian product (N rows per product before DISTINCT)
             //   - Wrong pagination total counts
             //   - Unnecessary query complexity
             // minPrice is kept in sync via Product.refreshMinPrice().
-            // ==================================================
             if (filter.getMinPrice() != null) {
                 predicates.add(
                         cb.greaterThanOrEqualTo(
@@ -80,9 +72,7 @@ public class ProductSpecification {
                 );
             }
 
-            // ==================================================
             // ACTIVE FILTER — skipped for admin queries (onlyActive = false)
-            // ==================================================
             if (filter.isOnlyActive()) {
                 predicates.add(cb.isTrue(root.get("active")));
             }

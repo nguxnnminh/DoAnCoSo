@@ -27,9 +27,7 @@ public interface ProductVariantRepository extends BaseRepository<ProductVariant,
     @Query("SELECT v FROM ProductVariant v WHERE v.id = :id")
     Optional<ProductVariant> findByIdForUpdate(@Param("id") Long id);
 
-    // =====================================================
     // DASHBOARD QUERIES
-    // =====================================================
     long countByStockLessThan(int stock);
 
     List<ProductVariant> findByStockLessThan(int stock);

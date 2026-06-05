@@ -32,7 +32,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         this.categoryService = categoryService;
     }
 
-    // ── LIST (optionally filtered by categoryId) ─────────
     @GetMapping
     public String list(@RequestParam(required = false) Long categoryId,
                        Model model) {
@@ -47,7 +46,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         return "admin/subcategories/index";
     }
 
-    // ── CREATE FORM ──────────────────────────────────────
     @GetMapping("/create")
     public String createForm(@RequestParam(required = false) Long categoryId,
                              Model model, HttpServletRequest request) {
@@ -62,7 +60,6 @@ public class AdminSubCategoryController extends AdminBaseController {
                 : "redirect:/admin/subcategories?modal=create";
     }
 
-    // ── CREATE POST ──────────────────────────────────────
     @PostMapping("/create")
     public Object create(@RequestParam String name,
                          @RequestParam Long categoryId,
@@ -104,7 +101,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         return ok(ajax, ra, "Subcategory '" + name.trim() + "' created successfully!", "/admin/subcategories");
     }
 
-    // ── EDIT FORM ────────────────────────────────────────
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model, RedirectAttributes ra,
                            HttpServletRequest request) {
@@ -125,7 +121,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         });
     }
 
-    // ── UPDATE POST ──────────────────────────────────────
     @PostMapping("/{id}")
     public Object update(@PathVariable Long id,
                          @RequestParam String name,
@@ -173,7 +168,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         return ok(ajax, ra, "Subcategory updated successfully!", "/admin/subcategories");
     }
 
-    // ── DELETE POST ──────────────────────────────────────
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes ra) {
         try {
@@ -185,7 +179,6 @@ public class AdminSubCategoryController extends AdminBaseController {
         return "redirect:/admin/subcategories";
     }
 
-    // ── SLUG HELPERS ─────────────────────────────────────
     private String toSlug(String input) {
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
         String s = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");

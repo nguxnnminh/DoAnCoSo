@@ -37,9 +37,7 @@ public class CouponService {
         this.userCouponRepository = userCouponRepository;
     }
 
-    // =====================================================
     // ADMIN CRUD
-    // =====================================================
     public List<Coupon> findAll() {
         return couponRepository.findAll();
     }
@@ -60,9 +58,7 @@ public class CouponService {
         return couponRepository.existsByCodeIgnoreCase(code.trim());
     }
 
-    // =====================================================
     // WELCOME COUPON — auto-created for new users
-    // =====================================================
     @Transactional
     public void createWelcomeCouponForUser(User user) {
         // Generate unique code: WELCOME-<short uuid>
@@ -94,10 +90,8 @@ public class CouponService {
                 code, user.getId(), user.getEmail());
     }
 
-    // =====================================================
     // REFERRAL: cấp 1 coupon user-specific (giảm tiền cố định) cho user
     // Dùng khi thưởng giới thiệu (cả người giới thiệu + người được giới thiệu)
-    // =====================================================
     @Transactional
     public void grantFixedCoupon(User user, String prefix, BigDecimal amount,
             BigDecimal minOrder, int validityDays, String description) {
@@ -126,10 +120,8 @@ public class CouponService {
         log.info("Granted coupon | code={} | userId={} | amount={}", code, user.getId(), amount);
     }
 
-    // =====================================================
     // USER-FACING: Get all coupons for "My Coupons" page
     // Returns both public + user-specific coupons
-    // =====================================================
     public List<CouponDisplayDTO> getAllCouponsForUser(User user) {
         List<CouponDisplayDTO> result = new ArrayList<>();
 
@@ -178,10 +170,8 @@ public class CouponService {
         return result;
     }
 
-    // =====================================================
     // USER-FACING: Get available coupons for checkout
     // Only returns coupons that are valid right now
-    // =====================================================
     public List<CouponDisplayDTO> getAvailableCouponsForUser(User user, BigDecimal orderTotal) {
         List<CouponDisplayDTO> all = getAllCouponsForUser(user);
 
@@ -209,10 +199,8 @@ public class CouponService {
                 .toList();
     }
 
-    // =====================================================
     // VALIDATE COUPON (read-only, no side effects, no lock)
     // Used by the UI preview endpoint only.
-    // =====================================================
     public Coupon validateCoupon(String code, BigDecimal orderTotal) {
         if (code == null || code.isBlank()) {
             return null;
@@ -254,13 +242,11 @@ public class CouponService {
         return coupon;
     }
 
-    // =====================================================
     // APPLY COUPON — pessimistic lock + increment usageCount.
     // MUST be called inside the same @Transactional as checkout.
     //
     // Throws IllegalStateException if coupon is invalid at
     // apply-time instead of silently returning full price.
-    // =====================================================
     @Transactional
     public BigDecimal applyCoupon(String code, BigDecimal orderTotal, User user) {
         if (code == null || code.isBlank()) {
@@ -336,9 +322,7 @@ public class CouponService {
         return applyCoupon(code, orderTotal, null);
     }
 
-    // =====================================================
     // DISPLAY DTO — used for UI rendering
-    // =====================================================
     @lombok.Data
     public static class CouponDisplayDTO {
         private String code;

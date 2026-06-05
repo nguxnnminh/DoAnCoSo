@@ -63,7 +63,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ── SHELL (bottom nav) — fade between tabs ───────────────────
       ShellRoute(
         builder: (context, state, child) => _ScaffoldWithNav(location: state.matchedLocation, child: child),
         routes: [
@@ -83,35 +82,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── AUTH — fade ───────────────────────────────────────────────
       GoRoute(path: '/login', pageBuilder: (_, state) => _fadePage(LoginScreen(redirect: state.uri.queryParameters['redirect']), state)),
       GoRoute(path: '/register', pageBuilder: (_, s) => _fadePage(const RegisterScreen(), s)),
       GoRoute(path: '/forgot-password', pageBuilder: (_, s) => _slidePage(const ForgotPasswordScreen(), s)),
       GoRoute(path: '/reset-password', pageBuilder: (_, state) => _slidePage(ResetPasswordScreen(token: state.uri.queryParameters['token'] ?? ''), state)),
 
-      // ── PRODUCT — slide from right ────────────────────────────────
       GoRoute(
         path: '/product/:id',
         pageBuilder: (_, state) => _slidePage(ProductDetailScreen(productId: int.parse(state.pathParameters['id']!)), state),
       ),
 
-      // ── CHECKOUT — slide ──────────────────────────────────────────
       GoRoute(path: '/checkout', pageBuilder: (_, s) => _slidePage(const CheckoutScreen(), s)),
       GoRoute(
         path: '/checkout/success/:id',
         pageBuilder: (_, state) => _fadePage(CheckoutSuccessScreen(orderId: int.parse(state.pathParameters['id']!)), state),
       ),
 
-      // ── ORDERS — slide ────────────────────────────────────────────
       GoRoute(
         path: '/orders/:id',
         pageBuilder: (_, state) => _slidePage(OrderDetailScreen(orderId: int.parse(state.pathParameters['id']!)), state),
       ),
 
-      // ── ACCOUNT EXTRAS — slide ────────────────────────────────────
       GoRoute(path: '/coupons', pageBuilder: (_, s) => _slidePage(const MyCouponsScreen(), s)),
 
-      // ── INFO PAGES — slide ────────────────────────────────────────
       GoRoute(path: '/sizing', pageBuilder: (_, s) => _slidePage(const SizingScreen(), s)),
       GoRoute(path: '/contact', pageBuilder: (_, s) => _slidePage(const ContactScreen(), s)),
       GoRoute(path: '/returns', pageBuilder: (_, s) => _slidePage(const ReturnsScreen(), s)),

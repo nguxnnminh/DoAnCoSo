@@ -31,11 +31,9 @@ public class OrderService extends GenericServiceBase<Order, Long> {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    // =====================================================
     // STATE MACHINE — valid forward transitions
     // CANCELLED and COMPLETED are terminal states.
     // Prevents stock corruption from arbitrary admin clicks.
-    // =====================================================
     // ADMIN-driven transitions (used by updateOrderStatus)
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
             OrderStatus.PENDING,           EnumSet.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED),
@@ -71,17 +69,13 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         this.referralService = referralService;
     }
 
-    // =====================================================
     // GET ALL ORDERS (PAGINATED)
-    // =====================================================
     public Page<Order> getAllOrders(Pageable pageable) {
         return orderRepository.findAllByOrderByCreatedAtDesc(pageable);
     }
 
-    // =====================================================
     // ADMIN SEARCH (keyword + status + date range)
     // All params are optional — passing null means "no filter".
-    // =====================================================
     public Page<Order> searchOrders(
             String keyword,
             String statusStr,
@@ -124,12 +118,10 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return orderRepository.searchAdmin(kw, orderId, status, dateFrom, dateTo, pageable);
     }
 
-    // =====================================================
     // UPDATE ORDER STATUS
     // Enforces state machine — invalid transitions are rejected.
     // Stock is restored only when transitioning TO CANCELLED
     // from a state that is not already CANCELLED.
-    // =====================================================
     @Transactional
     public Order updateOrderStatus(Long orderId, OrderStatus newStatus) {
 
@@ -206,9 +198,7 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return saved;
     }
 
-    // =====================================================
     // FIND ORDERS BY USER
-    // =====================================================
     public List<Order> findOrdersByUser(User user) {
         return orderRepository.findByActorOrderByCreatedAtDesc(user);
     }
@@ -219,10 +209,8 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return orderRepository.findByIdWithItems(orderId);
     }
 
-    // =====================================================
     // USER: Self-cancel (PENDING only, authenticated)
     // Stock is restored via the standard CANCELLED path.
-    // =====================================================
     @Transactional
     public Order selfCancel(Long orderId, User user) {
         Order order = findById(orderId)
@@ -239,10 +227,8 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return updateOrderStatus(orderId, OrderStatus.CANCELLED);
     }
 
-    // =====================================================
     // USER: Request cancellation (PROCESSING only)
     // Transitions to CANCEL_REQUESTED. Stock is NOT restored yet.
-    // =====================================================
     @Transactional
     public Order requestCancel(Long orderId, User user, String reason) {
         Order order = findById(orderId)
@@ -268,9 +254,7 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return saved;
     }
 
-    // =====================================================
     // ADMIN: Accept cancel request → CANCELLED + restore stock
-    // =====================================================
     @Transactional
     public Order acceptCancelRequest(Long orderId) {
         Order order = findById(orderId)
@@ -290,9 +274,7 @@ public class OrderService extends GenericServiceBase<Order, Long> {
         return cancelled;
     }
 
-    // =====================================================
     // ADMIN: Deny cancel request → back to PROCESSING
-    // =====================================================
     @Transactional
     public Order denyCancelRequest(Long orderId) {
         Order order = findById(orderId)

@@ -293,7 +293,6 @@ public class DataInitializer {
                 Product p6 = products.get(5);  // Minimal Hoodie
                 Product p7 = products.get(9);  // Jogger Pants
 
-                // ---- testUser orders ----
                 Order order1 = createOrder(orderRepo, orderItemRepo,
                         testUser, OrderStatus.COMPLETED,
                         "Nguyễn Văn An", "0901234567", "123 Nguyễn Huệ, Q.1, TP.HCM",
@@ -337,7 +336,6 @@ public class DataInitializer {
                                 newItem(p7, variantRepo, "M", "Black", 2)
                         ));
 
-                // ---- user2 orders ----
                 Order order6 = createOrder(orderRepo, orderItemRepo,
                         user2, OrderStatus.COMPLETED,
                         "Trần Thị Lan", "0912345678", "456 Lê Lợi, Q.3, TP.HCM",
@@ -355,7 +353,6 @@ public class DataInitializer {
                                 newItem(p4, variantRepo, "28", "Black", 1)
                         ));
 
-                // ---- user3 orders ----
                 Order order8 = createOrder(orderRepo, orderItemRepo,
                         user3, OrderStatus.COMPLETED,
                         "Lê Hoàng Minh", "0923456789", "789 Điện Biên Phủ, Q.Bình Thạnh, TP.HCM",
@@ -374,7 +371,6 @@ public class DataInitializer {
                                 newItem(p2, variantRepo, "M", "Charcoal", 1)
                         ));
 
-                // ---- user4 orders ----
                 Order order10 = createOrder(orderRepo, orderItemRepo,
                         user4, OrderStatus.SHIPPING,
                         "Phạm Thu Hương", "0934567890", "12 Trần Hưng Đạo, Q.5, TP.HCM",
@@ -384,7 +380,6 @@ public class DataInitializer {
                                 newItem(products.get(10), variantRepo, "S", "Camel", 1)
                         ));
 
-                // ---- user5 orders ----
                 Order order11 = createOrder(orderRepo, orderItemRepo,
                         user5, OrderStatus.COMPLETED,
                         "Võ Đức Thắng", "0945678901", "34 Hai Bà Trưng, Q.1, TP.HCM",
@@ -461,7 +456,6 @@ public class DataInitializer {
         };
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
     private Category findOrCreateCategory(CategoryRepository repo, String name, String slug) {
         return repo.findBySlug(slug).orElseGet(() -> {
             Category c = new Category();

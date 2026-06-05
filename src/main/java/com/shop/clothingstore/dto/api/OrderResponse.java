@@ -36,6 +36,9 @@ public class OrderResponse {
     @AllArgsConstructor
     public static class OrderItemInfo {
 
+        // orderItemId — client cần để gửi đánh giá (review keyed theo order_item)
+        private Long id;
+
         private String productName;
         private String size;
         private String color;
@@ -44,6 +47,9 @@ public class OrderResponse {
         private BigDecimal price;
 
         private Integer quantity;
+
+        // Đã được đánh giá chưa (1 review / order_item) — client dùng để ẩn nút đánh giá
+        private boolean reviewed;
     }
 
     /**
@@ -51,15 +57,24 @@ public class OrderResponse {
      * ngoài API.
      */
     public static OrderResponse from(Order order) {
+        return from(order, java.util.Set.of());
+    }
+
+    /**
+     * Overload nhận tập orderItemId đã được đánh giá để đặt cờ {@code reviewed}.
+     */
+    public static OrderResponse from(Order order, java.util.Set<Long> reviewedItemIds) {
 
         List<OrderItemInfo> items = order.getItems() != null
                 ? order.getItems().stream()
                         .map(i -> new OrderItemInfo(
+                        i.getId(),
                         i.getProductName(),
                         i.getSize(),
                         i.getColor(),
                         i.getPrice(), // BigDecimal → BigDecimal, no conversion needed
-                        i.getQuantity()
+                        i.getQuantity(),
+                        reviewedItemIds.contains(i.getId())
                 ))
                         .toList()
                 : List.of();

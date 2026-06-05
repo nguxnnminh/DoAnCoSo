@@ -81,9 +81,7 @@ class OrderServiceTest {
         lenient().when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    // =====================================================
     // STATE MACHINE — valid transitions
-    // =====================================================
 
     @Test
     void updateStatus_pendingToProcessing_succeeds() {
@@ -112,9 +110,7 @@ class OrderServiceTest {
         assertThat(result.getStatus()).isEqualTo(OrderStatus.CANCELLED);
     }
 
-    // =====================================================
     // STATE MACHINE — invalid transitions must be rejected
-    // =====================================================
 
     @Test
     void updateStatus_completedToPending_throwsIllegalState() {
@@ -152,9 +148,7 @@ class OrderServiceTest {
                 .isInstanceOf(InvalidOrderStateException.class);
     }
 
-    // =====================================================
     // SAME STATUS — no-op, no save
-    // =====================================================
 
     @Test
     void updateStatus_sameStatus_returnsOrderWithoutSaving() {
@@ -163,9 +157,7 @@ class OrderServiceTest {
         verify(orderRepository, never()).save(any());
     }
 
-    // =====================================================
     // STOCK RESTORATION on CANCEL
-    // =====================================================
 
     @Test
     void updateStatus_cancelFromPending_restoresStock() {
@@ -209,9 +201,7 @@ class OrderServiceTest {
         assertThat(variant.getSold()).isEqualTo(0);
     }
 
-    // =====================================================
     // ORDER NOT FOUND
-    // =====================================================
 
     @Test
     void updateStatus_orderNotFound_throwsRuntimeException() {

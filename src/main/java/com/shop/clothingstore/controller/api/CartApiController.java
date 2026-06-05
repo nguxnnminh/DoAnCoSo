@@ -31,9 +31,7 @@ public class CartApiController {
         this.cartService = cartService;
     }
 
-    // =====================================================
     // GET /api/cart
-    // =====================================================
     @GetMapping
     public ResponseEntity<Map<String, Object>> getCart() {
 
@@ -48,9 +46,7 @@ public class CartApiController {
         return ResponseEntity.ok(response);
     }
 
-    // =====================================================
     // POST /api/cart/add
-    // =====================================================
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> addToCart(
             @Valid @RequestBody CartRequest request) {
@@ -60,9 +56,7 @@ public class CartApiController {
         return getCart();
     }
 
-    // =====================================================
     // PUT /api/cart/update
-    // =====================================================
     @PutMapping("/update")
     public ResponseEntity<Map<String, Object>> updateQuantity(
             @Valid @RequestBody CartRequest request) {
@@ -72,9 +66,7 @@ public class CartApiController {
         return getCart();
     }
 
-    // =====================================================
     // DELETE /api/cart/{variantId}
-    // =====================================================
     @DeleteMapping("/{variantId}")
     public ResponseEntity<Map<String, Object>> removeFromCart(
             @PathVariable Long variantId) {
@@ -84,9 +76,7 @@ public class CartApiController {
         return getCart();
     }
 
-    // =====================================================
     // DELETE /api/cart
-    // =====================================================
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> clearCart() {
 

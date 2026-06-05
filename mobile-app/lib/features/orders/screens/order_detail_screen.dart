@@ -189,7 +189,6 @@ class _BodyState extends State<_Body> {
             ),
           ],
 
-          // ── REVIEW SECTION (COMPLETED orders only) ────────────────
           if (status == 'COMPLETED' || status == 'DELIVERED') ...[
             const SizedBox(height: 32),
             const Divider(color: AppColors.borderDark),
@@ -199,7 +198,6 @@ class _BodyState extends State<_Body> {
             ...order.items.map((item) => _ReviewRow(item: item, orderId: order.id)),
           ],
 
-          // ── CANCEL (PENDING) ─────────────────────────────────────
           if (order.canCancel) ...[
             const SizedBox(height: 32),
             NovaOutlineButton(
@@ -211,7 +209,6 @@ class _BodyState extends State<_Body> {
             ),
           ],
 
-          // ── CANCEL REQUEST (PROCESSING) ──────────────────────────
           if (order.canRequestCancel) ...[
             const SizedBox(height: 32),
             GestureDetector(
@@ -259,8 +256,6 @@ class _BodyState extends State<_Body> {
   }
 }
 
-// ── Review Row per item ────────────────────────────────────────────────────────
-
 class _ReviewRow extends StatefulWidget {
   final OrderItem item;
   final int orderId;
@@ -285,11 +280,12 @@ class _ReviewRowState extends State<_ReviewRow> {
 
   Future<void> _submit(ApiClient api) async {
     if (_rating == 0) return;
+    final itemId = widget.item.id;
+    if (itemId == null) return;
     setState(() => _submitting = true);
     try {
-      await api.dio.post('/reviews', data: {
-        'orderId': widget.orderId,
-        'productName': widget.item.productName,
+      // Khớp web: review keyed theo orderItemId (ReviewService.createReview).
+      await api.dio.post('/api/reviews/$itemId', data: {
         'rating': _rating,
         'comment': _commentCtrl.text.trim(),
       });
@@ -311,11 +307,11 @@ class _ReviewRowState extends State<_ReviewRow> {
           Text(widget.item.productName, style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
           Text('${widget.item.size} / ${widget.item.color}', style: const TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textMuted2)),
           const SizedBox(height: 10),
-          if (_submitted) ...[
-            const Row(children: [
-              Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
-              SizedBox(width: 6),
-              Text('Review submitted!', style: TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.success)),
+          if (_submitted || widget.item.reviewed) ...[
+            Row(children: [
+              const Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
+              const SizedBox(width: 6),
+              Text(_submitted ? 'Review submitted!' : 'You reviewed this item', style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.success)),
             ]),
           ] else if (!_showForm) ...[
             GestureDetector(
