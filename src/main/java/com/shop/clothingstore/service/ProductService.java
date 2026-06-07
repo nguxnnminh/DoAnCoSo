@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,14 +45,17 @@ public class ProductService extends GenericServiceBase<Product, Long> {
     private final ProductRepository productRepository;
     private final SubCategoryRepository subCategoryRepository;
     private final FileStorageService fileStorageService;
+    private final com.shop.clothingstore.repository.WishlistItemRepository wishlistItemRepository;
 
     public ProductService(ProductRepository productRepository,
             SubCategoryRepository subCategoryRepository,
-            FileStorageService fileStorageService) {
+            FileStorageService fileStorageService,
+            com.shop.clothingstore.repository.WishlistItemRepository wishlistItemRepository) {
         super(productRepository);
         this.productRepository = productRepository;
         this.subCategoryRepository = subCategoryRepository;
         this.fileStorageService = fileStorageService;
+        this.wishlistItemRepository = wishlistItemRepository;
     }
 
     // CREATE PRODUCT
@@ -328,6 +332,7 @@ public class ProductService extends GenericServiceBase<Product, Long> {
             }
         });
 
+        wishlistItemRepository.deleteByProductId(productId);
         delete(productId);
     }
 
@@ -406,10 +411,30 @@ public class ProductService extends GenericServiceBase<Product, Long> {
 
     public Page<Product> findWithFilter(ProductFilterDTO filter, Pageable pageable) {
         java.util.Objects.requireNonNull(pageable, "Pageable must not be null");
-        return productRepository.findAll(
-                ProductSpecification.filter(filter),
-                pageable
-        );
+
+        // Step 1: paginate with only scalar/ManyToOne fields (no collection fetch).
+        // Avoids HHH90003004 — Hibernate cannot push firstResult/maxResults to SQL
+        // when the query also JOIN-fetches a collection (images, productVariants).
+        Page<Product> page = productRepository.findAll(
+                ProductSpecification.filter(filter), pageable);
+
+        if (page.isEmpty()) {
+            return page;
+        }
+
+        // Step 2: hydrate images + productVariants for this page in one query.
+        List<Long> ids = page.getContent().stream().map(Product::getId).toList();
+        Map<Long, Product> hydrated = productRepository.findByIdsWithCollections(ids)
+                .stream()
+                .collect(Collectors.toMap(Product::getId, p -> p, (a, b) -> a, LinkedHashMap::new));
+
+        // Rebuild page preserving original sort order.
+        List<Product> ordered = ids.stream()
+                .map(id -> hydrated.getOrDefault(id, page.getContent()
+                        .stream().filter(p -> p.getId().equals(id)).findFirst().orElseThrow()))
+                .toList();
+
+        return new org.springframework.data.domain.PageImpl<>(ordered, pageable, page.getTotalElements());
     }
 
     // FULL-TEXT SEARCH (MySQL/MariaDB FULLTEXT) + AUTOCOMPLETE

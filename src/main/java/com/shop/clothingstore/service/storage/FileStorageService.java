@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final long MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
     private static final Set<String> ALLOWED_MAGIC_BYTES = Set.of(
@@ -42,8 +42,8 @@ public class FileStorageService {
 
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException(
-                    "File too large. Maximum 5MB, current file: "
-                    + (file.getSize() / 1024 / 1024) + "MB");
+                    "File too large. Maximum 20 MB, current file: "
+                    + (file.getSize() / 1024 / 1024) + " MB");
         }
 
         String originalName = file.getOriginalFilename();
@@ -99,7 +99,7 @@ public class FileStorageService {
         }
 
         if (bytes.length > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File too large. Maximum 5MB.");
+            throw new IllegalArgumentException("File too large. Maximum 20 MB.");
         }
 
         String extension = extractExtension(filename);

@@ -57,20 +57,23 @@ public class RecommendationService {
         BigDecimal priceLow  = minPrice.multiply(new BigDecimal("0.7"));
         BigDecimal priceHigh = minPrice.multiply(new BigDecimal("1.3"));
 
-        List<Product> sameSub = productRepository.findSimilarBySubCategory(
-                subCategoryId, productId, PageRequest.of(0, limit * 2));
+        // Two-pass: fetch IDs first (no collection join = no in-memory pagination),
+        // then hydrate images + variants in a single second query.
+        List<Long> subIds = productRepository.findSimilarIdsBySubCategory(
+                subCategoryId, productId, limit * 2);
+        List<Product> sameSub = new ArrayList<>(
+                productRepository.findByIdsWithCollections(subIds));
 
         if (sameSub.size() < limit) {
-            List<Product> sameCat = productRepository.findSimilarByCategory(
-                    categoryId, productId, PageRequest.of(0, limit * 2));
-
+            List<Long> catIds = productRepository.findSimilarIdsByCategory(
+                    categoryId, productId, limit * 2);
             Set<Long> existingIds = sameSub.stream()
                     .map(Product::getId).collect(Collectors.toSet());
-
-            for (Product p : sameCat) {
-                if (!existingIds.contains(p.getId())) {
-                    sameSub.add(p);
-                }
+            List<Long> extraIds = catIds.stream()
+                    .filter(id -> !existingIds.contains(id)).toList();
+            if (!extraIds.isEmpty()) {
+                productRepository.findByIdsWithCollections(extraIds)
+                        .forEach(sameSub::add);
             }
         }
 

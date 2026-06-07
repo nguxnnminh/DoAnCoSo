@@ -270,10 +270,6 @@
             });
         }
         const editForm = document.getElementById('productEditForm');
-        editForm.addEventListener('submit', stripPriceInputs, { signal: controller.signal });
-        editForm.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && e.target.classList.contains('price-input')) stripPriceInputs();
-        }, { signal: controller.signal });
         document.querySelectorAll('.price-input').forEach(i => {
             const raw = i.value.replace(/[^\d]/g, '');
             if (raw && Number(raw) > 0) i.value = Number(raw).toLocaleString('vi-VN');
@@ -358,12 +354,25 @@
         };
         renderGallery();
 
-        editForm.addEventListener('submit', function() {
+        // Override modal submit to manually build FormData with gallery files.
+        // new FormData(form) cannot reliably read programmatically-assigned input.files
+        // across all browsers, so we append new image files directly to FormData.
+        editForm.addEventListener('submit', function(e) {
+            e.stopImmediatePropagation(); // prevent admin-modal.js from also handling this
+            e.preventDefault();
+
             const orderBox  = document.getElementById('imageOrderInputs');
             const deleteBox = document.getElementById('imagesToDeleteInputs');
             orderBox.innerHTML = '';
             deleteBox.innerHTML = '';
-            const dt = new DataTransfer();
+
+            // Strip price formatting before building FormData
+            stripPriceInputs();
+
+            const fd = new FormData(editForm);
+            // Remove any stale newImages entries from the native input
+            fd.delete('newImages');
+
             let newIdx = 0;
             galleryItems.forEach(item => {
                 const tok = document.createElement('input');
@@ -373,21 +382,64 @@
                     tok.value = 'E' + item.id;
                 } else {
                     tok.value = 'N' + newIdx;
-                    dt.items.add(item.file);
+                    fd.append('newImages', item.file, item.file.name);
                     newIdx++;
                 }
                 orderBox.appendChild(tok);
+                fd.append('imageOrder', tok.value);
             });
-            newImageInput.files = dt.files;
+
             const keptIds = new Set(galleryItems.filter(i => i.type === 'existing').map(i => String(i.id)));
             (existingImages || []).forEach(img => {
                 if (!keptIds.has(String(img.id))) {
-                    const del = document.createElement('input');
-                    del.type = 'hidden';
-                    del.name = 'imagesToDelete';
-                    del.value = img.id;
-                    deleteBox.appendChild(del);
+                    fd.append('imagesToDelete', img.id);
                 }
+            });
+
+            // Submit via fetch directly (bypass admin-modal.js submitForm)
+            const submitBtn = editForm.querySelector('[type=submit]');
+            const oldLabel = submitBtn ? submitBtn.innerHTML : null;
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = 'Saving…'; }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            const csrfHeader = document.querySelector('meta[name="csrf-header"]');
+            const headers = { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
+            if (csrfToken && csrfHeader) headers[csrfHeader.content] = csrfToken.content;
+
+            fetch(editForm.getAttribute('action'), {
+                method: 'POST',
+                headers,
+                body: fd,
+                credentials: 'same-origin'
+            }).then(res => {
+                const ct = res.headers.get('content-type') || '';
+                return ct.includes('application/json') ? res.json().then(d => ({ ok: res.ok, data: d })) : { ok: res.ok, data: null };
+            }).then(({ ok, data }) => {
+                if (ok && (!data || data.ok !== false)) {
+                    if (typeof window.__adminPageCleanup === 'function') { try { window.__adminPageCleanup(); } catch(_){} window.__adminPageCleanup = null; }
+                    document.getElementById('ajaxModal').classList.remove('open');
+                    document.body.style.overflow = '';
+                    const msg = (data && data.message) || 'Saved successfully.';
+                    const el = document.createElement('div');
+                    el.className = 'toast toast-success';
+                    el.innerHTML = '<span>' + msg + '</span>';
+                    document.body.appendChild(el);
+                    setTimeout(() => { el.style.opacity='0'; el.style.transition='all 0.3s'; setTimeout(()=>el.remove(),300); }, 3000);
+                    if (typeof window.adminSpaReload === 'function') window.adminSpaReload(); else window.location.reload();
+                } else {
+                    const errMsg = (data && data.error) || 'Could not save. Please check the form.';
+                    const host = document.querySelector('[data-modal-content]') || editForm.parentElement;
+                    let banner = host.querySelector('.modal-error');
+                    if (!banner) { banner = document.createElement('div'); banner.className = 'modal-error'; const body = editForm.closest('.modal-form-body') || editForm.parentElement; body.insertBefore(banner, body.firstChild); }
+                    banner.textContent = errMsg;
+                }
+            }).catch(() => {
+                const host = document.querySelector('[data-modal-content]') || editForm.parentElement;
+                let banner = host.querySelector('.modal-error');
+                if (!banner) { banner = document.createElement('div'); banner.className = 'modal-error'; editForm.parentElement.insertBefore(banner, editForm.parentElement.firstChild); }
+                banner.textContent = 'Network error. Please try again.';
+            }).finally(() => {
+                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = oldLabel; }
             });
         }, { signal: controller.signal });
         })();

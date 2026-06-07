@@ -11,6 +11,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.shop.clothingstore.dto.api.ApiErrorResponse;
@@ -137,6 +138,19 @@ public class ApiExceptionHandler {
         String reason = ex.getReason() != null ? ex.getReason() : ex.getMessage();
         return ResponseEntity.status(ex.getStatusCode()).body(
                 new ApiErrorResponse(code, "HTTP_" + code, reason, request.getRequestURI())
+        );
+    }
+
+    // 413 - File too large
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
+                new ApiErrorResponse(413, "FILE_TOO_LARGE",
+                        "Upload exceeds the allowed size limit (max 20 MB per file, 50 MB per request)",
+                        request.getRequestURI())
         );
     }
 

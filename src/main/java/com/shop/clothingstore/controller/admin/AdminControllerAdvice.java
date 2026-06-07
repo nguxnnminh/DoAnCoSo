@@ -2,10 +2,15 @@ package com.shop.clothingstore.controller.admin;
 
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.shop.clothingstore.entity.OrderStatus;
 import com.shop.clothingstore.repository.OrderRepository;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Injects model attributes available to every admin template.
@@ -30,5 +35,18 @@ public class AdminControllerAdvice {
         } catch (Exception ignored) {
             model.addAttribute("pendingCount", 0L);
         }
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public String handleMaxUploadSize(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request,
+            RedirectAttributes ra) {
+
+        ra.addFlashAttribute("error",
+                "Upload exceeds the allowed size limit (max 20 MB per file, 50 MB per request)");
+
+        String referer = request.getHeader("Referer");
+        return "redirect:" + (referer != null ? referer : "/admin/products");
     }
 }

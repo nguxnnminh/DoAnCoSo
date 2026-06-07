@@ -93,51 +93,65 @@ public interface ProductRepository extends BaseRepository<Product, Long> {
     Page<Product> findAll(@NonNull Pageable pageable);
 
     /*
-     * PRODUCT LIST WITH SPECIFICATION + ENTITYGRAPH
-     * Tránh N+1 khi dùng filter API (shop + admin).
-     * productVariants included so product.getTotalStock()
-     * doesn't trigger a lazy SELECT per product in admin.
-     * Hibernate fetches variants in one batch SELECT, not N.
+     * PRODUCT LIST WITH SPECIFICATION — pagination only, no collection fetch.
+     * Avoids HHH90003004: Hibernate cannot apply firstResult/maxResults in SQL
+     * when a query also JOIN-fetches a collection (images or productVariants).
+     * Use findAll(Specification, Pageable) to get a Page<Product> with only
+     * scalar/ManyToOne fields, then call findByIdInWithCollections() to hydrate
+     * the collections for the current page in a single second query.
      */
     @Override
     @EntityGraph(attributePaths = {
         "subCategory",
-        "subCategory.category",
-        "images",
-        "productVariants"
+        "subCategory.category"
     })
     @NonNull
     Page<Product> findAll(@Nullable Specification<Product> spec, @NonNull Pageable pageable);
 
+    /*
+     * HYDRATE COLLECTIONS FOR A PAGE OF IDS
+     * Second-pass query: fetch images + productVariants for a known set of IDs.
+     * Called after paginated findAll() to avoid the in-memory pagination warning.
+     */
+    @EntityGraph(attributePaths = {
+        "images",
+        "productVariants",
+        "subCategory",
+        "subCategory.category"
+    })
+    @Query("SELECT p FROM Product p WHERE p.id IN :ids")
+    List<Product> findByIdsWithCollections(@Param("ids") List<Long> ids);
+
     // RECOMMENDATION QUERIES
-    // EntityGraph fetches images + subCategory eagerly so the product-detail
-    // template does NOT trigger lazy loads for each related product card.
-    // productVariants are NOT fetched here — use product.minPrice in templates.
-    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
-    @Query("""
-        SELECT p FROM Product p
-        WHERE p.subCategory.id = :subCategoryId
+    // Two-pass approach (same as findWithFilter) to avoid HHH90003004:
+    // first query uses LIMIT in native SQL to get IDs, then findByIdsWithCollections
+    // hydrates images + variants without triggering in-memory pagination.
+    @Query(value = """
+        SELECT p.id FROM products p
+        WHERE p.sub_category_id = :subCategoryId
           AND p.id <> :excludeId
-          AND p.active = true
+          AND p.active = 1
         ORDER BY p.id DESC
-    """)
-    List<Product> findSimilarBySubCategory(
+        LIMIT :lim
+    """, nativeQuery = true)
+    List<Long> findSimilarIdsBySubCategory(
             @Param("subCategoryId") Long subCategoryId,
             @Param("excludeId") Long excludeId,
-            Pageable pageable);
+            @Param("lim") int limit);
 
-    @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
-    @Query("""
-        SELECT p FROM Product p
-        WHERE p.subCategory.category.id = :categoryId
+    @Query(value = """
+        SELECT p.id FROM products p
+        JOIN sub_categories sc ON p.sub_category_id = sc.id
+        WHERE sc.category_id = :categoryId
           AND p.id <> :excludeId
-          AND p.active = true
+          AND p.active = 1
         ORDER BY p.id DESC
-    """)
-    List<Product> findSimilarByCategory(
+        LIMIT :lim
+    """, nativeQuery = true)
+    List<Long> findSimilarIdsByCategory(
             @Param("categoryId") Long categoryId,
             @Param("excludeId") Long excludeId,
-            Pageable pageable);
+            @Param("lim") int limit);
 
     @EntityGraph(attributePaths = {"images", "productVariants", "subCategory", "subCategory.category"})
     @Query("""

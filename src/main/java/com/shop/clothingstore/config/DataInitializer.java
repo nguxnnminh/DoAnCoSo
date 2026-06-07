@@ -64,6 +64,11 @@ public class DataInitializer {
     ) {
         return args -> {
 
+            if (categoryRepo.count() > 0) {
+                log.info("Sample data already exists — skipping DataInitializer");
+                return;
+            }
+
             log.info("Initializing sample data");
 
             /* ── CATEGORIES ─────────────────────────────────── */
@@ -523,13 +528,7 @@ public class DataInitializer {
         product.setMinPrice(minCreated != null ? minCreated : basePrice);
         productRepo.save(product);
 
-        if (imageRepo.findByProduct(product).isEmpty()) {
-            ProductImage img = new ProductImage();
-            img.setProduct(product);
-            img.setImageUrl("/images/sample.jpg");
-            img.setPrimaryImage(true);
-            imageRepo.save(img);
-        }
+        // No placeholder image — products without images show a fallback in templates.
 
         return product;
     }
