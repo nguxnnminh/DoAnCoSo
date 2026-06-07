@@ -163,62 +163,67 @@
   </style>
 
   <!-- ── PRODUCT LAYOUT ────────────────────────────────────── -->
-  <div class="flex flex-col lg:flex-row gap-0.5 min-h-[80vh] items-start">
+  <div id="productLayout" class="flex flex-col lg:flex-row gap-0.5">
 
     <!-- LEFT: IMAGES -->
-    <div class="w-full lg:w-[58%] lg:sticky lg:top-[72px]">
-      <div class="relative overflow-hidden bg-[#111]">
+    <div class="w-full lg:w-[52%] lg:sticky pt-4 lg:pt-0" id="imageCol" style="z-index:1; top:108px; align-self:flex-start;">
+      <!-- Main image -->
+      <div class="relative overflow-hidden" id="mainImageWrap" style="background:#fff;">
         <img id="mainImage"
-             class="w-full aspect-[4/5] object-cover block transition-opacity duration-300"
+             class="w-full object-contain block transition-opacity duration-300"
+             style="height:calc(100vh - 108px); max-height:700px; cursor:zoom-in;"
              th:src="${product.images!=null and !product.images.isEmpty()?product.images[0].imageUrl:'/images/no-image.png'}"
-             th:alt="${product.name}" />
-        <div class="absolute bottom-5 right-5 text-xs tracking-widest3 uppercase text-zinc-700">
-          01 / <span th:text="${product.images!=null?product.images.size():1}">1</span>
+             th:alt="${product.name}"
+             onclick="openImgLightbox(this.src)" />
+        <div class="absolute bottom-4 right-4 text-[0.6rem] tracking-widest uppercase text-zinc-700">
+          <span id="imgCounter">01</span> / <span th:text="${product.images!=null?product.images.size():1}">1</span>
         </div>
       </div>
+      <!-- Thumbnails -->
       <div class="flex gap-0.5 mt-0.5 overflow-x-auto"
            th:if="${product.images!=null and product.images.size()>1}">
         <img th:each="img,iter : ${product.images}" th:src="${img.imageUrl}" th:data-src="${img.imageUrl}"
+             th:data-index="${iter.index + 1}"
              class="thumb" th:classappend="${iter.index==0?' active-thumb':''}"
              th:alt="${product.name + ' image ' + (iter.index + 1)}" />
       </div>
     </div>
 
     <!-- RIGHT: INFO -->
-    <div class="flex-1 flex flex-col px-4 md:px-8 lg:px-12 py-8 md:py-12">
+    <div class="flex-1 flex flex-col px-6 lg:px-10 pb-16" id="infoCol" style="padding-top:8px;">
 
       <!-- Breadcrumb -->
-      <div class="flex items-center gap-3 mb-8 text-xs tracking-widest uppercase text-zinc-700 flex-wrap">
+      <div class="flex items-center gap-2 mb-6 text-[0.65rem] tracking-widest uppercase text-zinc-700 flex-wrap">
         <a th:href="@{/products}" class="no-underline transition-colors hover:text-[#f5f5f3]">Shop</a>
         <span>—</span>
         <a th:href="@{'/products/'+${product.subCategory.category.slug}}"
            class="no-underline transition-colors hover:text-[#f5f5f3]"
            th:text="${product.subCategory.category.name}"></a>
         <span>—</span>
-        <span class="text-zinc-500" th:text="${product.subCategory.name}"></span>
+        <span class="text-zinc-600" th:text="${product.subCategory.name}"></span>
       </div>
 
       <!-- Name -->
-      <h1 class="font-display text-[2.6rem] md:text-[3.2rem] tracking-wide leading-[1.05] text-[#f5f5f3] mb-4"
+      <h1 class="font-display text-[2.4rem] md:text-[3rem] tracking-wide leading-[1.0] text-[#f5f5f3] mb-3"
           th:text="${product.name}">Product Name</h1>
 
       <!-- Price -->
-      <p id="priceText" class="text-base md:text-lg text-[#c0c0bc] mb-2 tracking-wide"
+      <p id="priceText" class="text-sm text-[#c0c0bc] mb-1 tracking-widest"
          th:attr="data-base-price-text=${product.minPrice != null and product.minPrice > 0 ? 'From ' + #numbers.formatDecimal(product.minPrice,0,'POINT',0,'COMMA') + ' ₫' : 'Select size and color'}">
         <span th:if="${product.minPrice != null and product.minPrice > 0}"
               th:text="${'From ' + #numbers.formatDecimal(product.minPrice,0,'POINT',0,'COMMA') + ' ₫'}"></span>
         <span th:unless="${product.minPrice != null and product.minPrice > 0}">Select size &amp; color</span>
       </p>
-      <p class="text-xs tracking-widest uppercase text-zinc-500 mb-8">
+      <p class="text-[0.65rem] tracking-widest uppercase text-zinc-600 mb-6">
         Select a size and color to see price, stock, and delivery options.
       </p>
 
-      <div class="h-px bg-zinc-900 mb-8"></div>
+      <div class="h-px bg-zinc-900 mb-6"></div>
 
       <!-- SIZE -->
-      <div class="mb-7">
-        <div class="flex justify-between items-center mb-4">
-          <p class="text-xs tracking-widest3 uppercase text-zinc-500">Size</p>
+      <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+          <p class="text-[0.65rem] tracking-widest uppercase text-zinc-500">Size</p>
           <button type="button" class="size-guide-link" onclick="toggleSizeGuide()" aria-controls="sizeGuidePanel" aria-expanded="false" id="sizeGuideToggle">
             Size Guide
           </button>
@@ -234,8 +239,8 @@
       </div>
 
       <!-- COLOR -->
-      <div class="mb-8">
-        <p class="text-xs tracking-widest3 uppercase text-zinc-500 mb-4">Color</p>
+      <div class="mb-5">
+        <p class="text-[0.65rem] tracking-widest uppercase text-zinc-500 mb-3">Color</p>
         <div class="flex gap-2 flex-wrap">
           <button th:each="c : ${colors}" type="button" th:data-color="${c}"
                   class="n-var color-btn" aria-pressed="false">
@@ -246,27 +251,7 @@
       </div>
 
       <!-- Stock -->
-      <p id="stockMsg" class="text-xs tracking-widest uppercase min-h-[18px] mb-4" role="status" aria-live="polite"></p>
-
-      <!-- VIRTUAL TRY-ON BUTTON -->
-      <div th:if="${product.tryOnEnabled and product.garmentProcessedUrl != null}" class="pdp-assist-card">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-          <div>
-            <p class="text-xs tracking-widest uppercase text-[#f0d36a] mb-1">AI fit confidence</p>
-            <p class="text-sm leading-relaxed text-zinc-500">Upload one full-body photo to preview this piece before adding it to cart.</p>
-          </div>
-          <button type="button" id="tryOnBtn" onclick="openTryOnModal()"
-                  class="min-h-[44px] px-5 bg-[#f5f5f3] text-[#0a0a0a]
-                         font-body text-xs tracking-widest uppercase font-medium cursor-pointer
-                         transition-colors duration-200 hover:bg-[#d8d8d4] flex items-center justify-center gap-2 shrink-0">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-              <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
-            </svg>
-            Check Fit With AI
-          </button>
-        </div>
-        <p class="text-[0.72rem] leading-relaxed text-zinc-600 mt-3">Your photo is used only to generate the try-on preview on this device/session.</p>
-      </div>
+      <p id="stockMsg" class="text-[0.65rem] tracking-widest uppercase min-h-[16px] mb-4 text-[#f0d36a]" role="status" aria-live="polite"></p>
 
       <!-- ADD TO CART -->
       <form method="post" th:action="@{/cart/add}" id="addToCartForm">
@@ -275,11 +260,11 @@
         <div class="flex gap-2 mb-3">
           <label for="quantityInput" class="sr-only">Quantity</label>
           <input id="quantityInput" type="number" name="quantity" min="1" value="1"
-                 class="w-[68px] border border-zinc-800 bg-transparent text-[#f5f5f3]
-                        text-center font-body text-sm px-2 py-3 outline-none
+                 class="w-[60px] border border-zinc-800 bg-transparent text-[#f5f5f3]
+                        text-center font-body text-sm px-2 py-2.5 outline-none
                         transition-colors focus:border-zinc-500" />
           <button type="submit" id="addBtn" disabled
-                  class="flex-1 h-12 bg-[#f5f5f3] text-[#0a0a0a] border-none
+                  class="flex-1 h-11 bg-[#f5f5f3] text-[#0a0a0a] border-none
                          font-body text-xs tracking-widest uppercase font-medium
                          cursor-pointer transition-colors duration-200 hover:bg-[#d8d8d4]
                          disabled:opacity-40 disabled:cursor-not-allowed">
@@ -288,21 +273,15 @@
         </div>
       </form>
 
-      <div class="pdp-confidence-grid">
-        <span>Free shipping over 500k</span>
-        <span>14-day returns on eligible items</span>
-        <span>COD and secure checkout</span>
-      </div>
-
-      <!-- WISHLIST — outside cart form, uses AJAX to stay on page -->
-      <div class="mt-2">
+      <!-- WISHLIST -->
+      <div class="mb-5">
         <button type="button" id="wishlistBtn"
                 sec:authorize="isAuthenticated()"
                 th:data-product-id="${product.id}"
                 th:attr="data-in-wishlist=${isInWishlist}"
                 onclick="toggleWishlist()"
-                class="w-full h-11 bg-transparent border cursor-pointer font-body
-                       text-xs tracking-widest uppercase transition-all duration-200"
+                class="w-full h-10 bg-transparent border cursor-pointer font-body
+                       text-[0.65rem] tracking-widest uppercase transition-all duration-200"
                 th:classappend="${isInWishlist}
                     ? 'border-zinc-600 text-zinc-400'
                     : 'border-zinc-800 text-zinc-600'">
@@ -313,16 +292,49 @@
         </button>
         <a sec:authorize="!isAuthenticated()"
            th:href="@{/login}"
-           class="w-full h-11 bg-transparent border border-zinc-800 text-zinc-600
-                  font-body text-xs tracking-widest uppercase cursor-pointer
+           class="w-full h-10 bg-transparent border border-zinc-800 text-zinc-600
+                  font-body text-[0.65rem] tracking-widest uppercase cursor-pointer
                   transition-all duration-200 hover:border-zinc-600 hover:text-zinc-400
                   flex items-center justify-center no-underline">
           ♡ &nbsp;Sign In to Save
         </a>
       </div>
 
+      <!-- VIRTUAL TRY-ON -->
+      <div th:if="${product.tryOnEnabled and product.garmentProcessedUrl != null}"
+           class="border border-zinc-800/60 p-4 mb-5">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-[0.6rem] tracking-widest uppercase text-[#f0d36a] mb-1">AI Fit Preview</p>
+            <p class="text-xs text-zinc-600">Preview this piece on your photo before buying.</p>
+          </div>
+          <button type="button" id="tryOnBtn" onclick="openTryOnModal()"
+                  class="shrink-0 h-9 px-4 bg-[#f5f5f3] text-[#0a0a0a]
+                         font-body text-[0.65rem] tracking-widest uppercase font-medium cursor-pointer
+                         transition-colors duration-200 hover:bg-[#d8d8d4] flex items-center gap-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+            Try On
+          </button>
+        </div>
+      </div>
+
+      <!-- SHIPPING INFO -->
+      <div class="grid grid-cols-3 gap-1 mb-5">
+        <div class="border border-zinc-900 p-3 text-center">
+          <p class="text-[0.6rem] tracking-widest uppercase text-zinc-600 leading-relaxed">Free shipping<br>over 500k</p>
+        </div>
+        <div class="border border-zinc-900 p-3 text-center">
+          <p class="text-[0.6rem] tracking-widest uppercase text-zinc-600 leading-relaxed">14-day<br>returns</p>
+        </div>
+        <div class="border border-zinc-900 p-3 text-center">
+          <p class="text-[0.6rem] tracking-widest uppercase text-zinc-600 leading-relaxed">COD &amp;<br>secure</p>
+        </div>
+      </div>
+
       <!-- ACCORDION -->
-      <div class="mt-10">
+      <div>
         <button type="button" class="acc-btn" onclick="toggleAcc(this)" aria-expanded="false">
           Description
           <span class="text-lg leading-none transition-transform duration-300 inline-block">+</span>
@@ -387,20 +399,27 @@
     </div>
   </section>
 
+  <!-- ── REVIEWS: empty state ──────────────────── -->
+  <section class="py-12 md:py-20 px-4 md:px-8 lg:px-12 border-t border-zinc-900"
+           th:unless="${reviews!=null and !reviews.isEmpty()}">
+    <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-2">Customer Feedback</p>
+    <h2 class="font-display text-3xl md:text-[3rem] tracking-wide leading-none text-[#f5f5f3] mb-4">Reviews</h2>
+    <p class="text-xs tracking-widest uppercase text-zinc-600">No reviews yet for this product.</p>
+  </section>
+
   <!-- ── REVIEWS ───────────────────────────────── -->
   <section class="py-12 md:py-20 px-4 md:px-8 lg:px-12 border-t border-zinc-900"
            th:if="${reviews!=null and !reviews.isEmpty()}">
     <div class="flex justify-between items-end mb-8 md:mb-12">
       <div>
         <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-2">Customer Feedback</p>
-        <h2 class="font-display text-3xl md:text-[3rem] tracking-wide leading-none text-[#f5f5f3]">
-          <span th:text="${#numbers.formatDecimal(averageRating,1,'POINT',1,'COMMA')}">0.0</span>
-          <span class="text-zinc-800"> / 5</span>
-        </h2>
+        <h2 class="font-display text-3xl md:text-[3rem] tracking-wide leading-none text-[#f5f5f3]">Reviews</h2>
+        <p class="text-xs tracking-widest uppercase text-zinc-600 mt-2">
+          <span th:text="${#numbers.formatDecimal(averageRating,1,'POINT',1,'COMMA')}">0.0</span> / 5
+          &nbsp;·&nbsp;
+          <span th:text="${reviewCount}">0</span> reviews
+        </p>
       </div>
-      <span class="text-xs tracking-widest uppercase text-zinc-600">
-        <span th:text="${reviewCount}">0</span> Reviews
-      </span>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -413,11 +432,13 @@
         <!-- Ảnh đính kèm review (nếu có) -->
         <div th:if="${review.imageUrls != null and !review.imageUrls.isEmpty()}"
              class="flex flex-wrap gap-2 mb-4">
-          <a th:each="img : ${review.imageUrls}" th:href="${img}" target="_blank"
-             class="block w-16 h-16 overflow-hidden border border-zinc-800 bg-zinc-900">
+          <div th:each="img : ${review.imageUrls}"
+               class="block w-16 h-16 overflow-hidden border border-zinc-800 bg-zinc-900 cursor-zoom-in"
+               th:data-src="${img}"
+               onclick="openImgLightbox(this.dataset.src)">
             <img th:src="${img}" alt="Review photo"
                  class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-          </a>
+          </div>
         </div>
         <p class="text-xs tracking-widest uppercase text-zinc-700"
            th:text="${review.actor?.fullName?:'Anonymous'}"></p>
@@ -473,17 +494,49 @@
       window.novaTrack?.('size_guide_toggle', { open, productId });
     }
 
+    // Align columns below the dynamic header (desktop only)
+    (function() {
+      const imageCol = document.getElementById('imageCol');
+      const infoCol  = document.getElementById('infoCol');
+      const annoBar  = document.getElementById('announcementBar');
+      const siteHdr  = document.getElementById('siteHeader');
+      function updateOffsets() {
+        const isDesktop = window.innerWidth >= 1024;
+        if (!isDesktop) {
+          if (imageCol) { imageCol.style.marginTop = ''; imageCol.style.top = ''; }
+          if (infoCol)  { infoCol.style.marginTop = ''; infoCol.style.paddingTop = ''; }
+          return;
+        }
+        const annoH = (annoBar && getComputedStyle(annoBar).display !== 'none') ? annoBar.offsetHeight : 0;
+        const hdrH  = siteHdr ? siteHdr.offsetHeight : 72;
+        const total = annoH + hdrH;
+        const extra = total - 36; // main has padding-top:36px on desktop
+        if (imageCol) {
+          imageCol.style.top = total + 'px';
+          imageCol.style.marginTop = extra + 'px';
+        }
+        if (infoCol) {
+          infoCol.style.marginTop = extra + 'px';
+          infoCol.style.paddingTop = '8px';
+        }
+      }
+      updateOffsets();
+      window.addEventListener('load', updateOffsets);
+      window.addEventListener('resize', updateOffsets, { passive: true });
+    })();
+
     document.querySelectorAll('.thumb').forEach(t => {
       t.addEventListener('click', () => {
         const mainImg = document.getElementById('mainImage');
         mainImg.style.opacity = '0';
-        mainImg.style.transition = 'opacity .25s ease';
         setTimeout(() => {
-          mainImg.src = t.dataset.src;
+          mainImg.src = t.src;
           mainImg.style.opacity = '1';
         }, 200);
         document.querySelectorAll('.thumb').forEach(x => x.classList.remove('active-thumb'));
         t.classList.add('active-thumb');
+        const counter = document.getElementById('imgCounter');
+        if (counter && t.dataset.index) counter.textContent = String(t.dataset.index).padStart(2, '0');
       });
     });
 
@@ -624,8 +677,8 @@
     /* ══════════════════════════════════════════════════════ */
     /* VIRTUAL TRY-ON LOGIC                                 */
     /* ══════════════════════════════════════════════════════ */
-    let savedPersonId = localStorage.getItem('tryon_personId') || null;
-    let savedPersonUrl = localStorage.getItem('tryon_personUrl') || null;
+    let savedPersonId = null;
+    let savedPersonUrl = null;
     let tryOnLastFocus = null;
 
     function getTryOnFocusable() {
@@ -682,12 +735,6 @@
       tryOnLastFocus = document.activeElement;
       document.getElementById('tryOnModal').style.display = 'flex';
       document.body.style.overflow = 'hidden';
-      // If we already have a person image, show it
-      if (savedPersonId && savedPersonUrl) {
-        document.getElementById('tryonPersonPreview').src = savedPersonUrl;
-        document.getElementById('tryonPersonPreview').style.display = 'block';
-        showTryonPhoto();
-      }
       // Reset result area
       document.getElementById('tryonResultArea').style.display = 'none';
       document.getElementById('tryonLoading').style.display = 'none';
@@ -732,8 +779,6 @@
           if (data.personId) {
             savedPersonId = data.personId;
             savedPersonUrl = data.url;
-            localStorage.setItem('tryon_personId', savedPersonId);
-            localStorage.setItem('tryon_personUrl', savedPersonUrl);
             setTryOnStatus('✓ Photo saved. Generate a preview when you are ready.');
             window.novaTrack?.('tryon_photo_uploaded', { productId });
           } else {
@@ -849,10 +894,12 @@
         <div>
           <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Your Photo</p>
           <div class="upload-zone" id="tryonUploadZone"
+               style="height:480px;"
                onclick="document.getElementById('tryonPersonInput').click()">
-            <img id="tryonPersonPreview" style="display:none; max-height:480px; width:100%;
-                 object-fit:contain; border-radius:3px;"
-                 onclick="event.stopPropagation(); openTryonLightbox(this.src)" />
+            <img id="tryonPersonPreview" style="display:none; width:100%; height:100%;
+                 object-fit:contain; border-radius:3px; cursor:zoom-in;"
+                 onclick="event.stopPropagation(); openTryonLightbox(this.src)"
+                 onerror="this.style.display='none'; document.getElementById('tryonUploadPrompt').style.display='flex'; document.getElementById('tryonChangePhoto').style.display='none'; document.getElementById('tryonUploadZone').classList.remove('has-image');" />
             <div id="tryonUploadPrompt" style="display:flex; flex-direction:column; align-items:center; gap:12px;">
               <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.3" aria-hidden="true">
                 <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
@@ -879,8 +926,8 @@
         <div>
           <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Result</p>
           <div style="border:1px solid #272727; border-radius:4px; padding:16px;
-                      min-height:380px; display:flex; flex-direction:column;
-                      align-items:center; justify-content:center; background:#0a0a0a;">
+                      height:480px; display:flex; flex-direction:column;
+                      align-items:center; justify-content:center; background:#0a0a0a; overflow:hidden;">
 
             <!-- Loading animation -->
             <div id="tryonLoading" style="display:none; flex-direction:column;
@@ -902,12 +949,12 @@
                   <span style="font-size:6px;">&#9679;</span> Refining details
                 </div>
               </div>
-              <p class="text-[0.55rem] tracking-widest uppercase text-zinc-800">30 \u2013 120 seconds</p>
+              <p class="text-[0.55rem] tracking-widest uppercase text-zinc-800">30-120 seconds</p>
             </div>
 
             <!-- Result image -->
-            <div id="tryonResultArea" style="display:none; text-align:center; width:100%;">
-              <img id="tryonResultImg" style="max-height:520px; width:100%; object-fit:contain; border-radius:3px;"
+            <div id="tryonResultArea" style="display:none; text-align:center; width:100%; height:100%; flex-direction:column; justify-content:center;">
+              <img id="tryonResultImg" style="width:100%; height:100%; object-fit:contain; border-radius:3px; cursor:zoom-in;"
                    onclick="openTryonLightbox(this.src)" />
               <p class="text-[0.55rem] tracking-widest uppercase text-zinc-700 mt-2">AI Generated Preview · tap to enlarge</p>
               <a id="tryonDownloadBtn" href="#"
@@ -951,6 +998,43 @@
     </button>
     <img id="tryonLightboxImg" alt="Enlarged preview" />
   </div>
+
+  <!-- ── IMAGE LIGHTBOX ───────────────────────────────── -->
+  <div id="imgLightbox"
+       style="display:none; position:fixed; inset:0; z-index:10002;
+              background:rgba(0,0,0,0.95); backdrop-filter:blur(8px);
+              align-items:center; justify-content:center; cursor:zoom-out;"
+       onclick="closeImgLightbox()">
+    <button type="button" aria-label="Close"
+            onclick="closeImgLightbox()"
+            style="position:fixed; top:20px; right:24px; background:none; border:none;
+                   color:#ccc; cursor:pointer; width:44px; height:44px; display:flex;
+                   align-items:center; justify-content:center; transition:color .2s;"
+            onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#ccc'">
+      <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+    <img id="imgLightboxImg" alt="Enlarged"
+         style="max-width:92vw; max-height:90vh; object-fit:contain;
+                box-shadow:0 0 60px rgba(0,0,0,.6); cursor:default;"
+         onclick="event.stopPropagation()" />
+  </div>
+
+  <script>
+    function openImgLightbox(src) {
+      const lb = document.getElementById('imgLightbox');
+      document.getElementById('imgLightboxImg').src = src;
+      lb.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      const onKey = e => { if (e.key === 'Escape') { closeImgLightbox(); document.removeEventListener('keydown', onKey); } };
+      document.addEventListener('keydown', onKey);
+    }
+    function closeImgLightbox() {
+      document.getElementById('imgLightbox').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  </script>
 
   <style>
     @keyframes spin { to { transform: rotate(360deg); } }

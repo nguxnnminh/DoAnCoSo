@@ -8,9 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.shop.clothingstore.entity.Order;
 import com.shop.clothingstore.entity.OrderItem;
 import com.shop.clothingstore.entity.OrderStatus;
+import com.shop.clothingstore.entity.ProductVariant;
 import com.shop.clothingstore.entity.Review;
 import com.shop.clothingstore.entity.User;
 import com.shop.clothingstore.repository.OrderItemRepository;
+import com.shop.clothingstore.repository.ProductVariantRepository;
 import com.shop.clothingstore.repository.ReviewRepository;
 import com.shop.clothingstore.repository.UserRepository;
 
@@ -20,14 +22,17 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final OrderItemRepository orderItemRepository;
     private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     public ReviewService(
             ReviewRepository reviewRepository,
             OrderItemRepository orderItemRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ProductVariantRepository productVariantRepository) {
         this.reviewRepository = reviewRepository;
         this.orderItemRepository = orderItemRepository;
         this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
     }
 
     @Transactional
@@ -71,7 +76,12 @@ public class ReviewService {
         review.setComment(comment);
         review.setActor(user);
         review.setOrderItem(orderItem);
-        review.setItemId(orderItem.getVariantId());
+
+        // itemId phải là productId để query theo product page hoạt động đúng
+        Long productId = productVariantRepository.findById(orderItem.getVariantId())
+                .map(v -> v.getProduct().getId())
+                .orElseThrow(() -> new IllegalStateException("Variant không tồn tại: " + orderItem.getVariantId()));
+        review.setItemId(productId);
         if (imageUrls != null && !imageUrls.isEmpty()) {
             // Giới hạn tối đa 5 ảnh / review
             review.setImageUrls(new java.util.ArrayList<>(

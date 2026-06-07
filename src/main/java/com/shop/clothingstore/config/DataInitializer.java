@@ -18,7 +18,6 @@ import com.shop.clothingstore.entity.Order;
 import com.shop.clothingstore.entity.OrderItem;
 import com.shop.clothingstore.entity.OrderStatus;
 import com.shop.clothingstore.entity.Product;
-import com.shop.clothingstore.entity.ProductImage;
 import com.shop.clothingstore.entity.ProductVariant;
 import com.shop.clothingstore.entity.Review;
 import com.shop.clothingstore.entity.Role;
@@ -529,7 +528,6 @@ public class DataInitializer {
         productRepo.save(product);
 
         // No placeholder image — products without images show a fallback in templates.
-
         return product;
     }
 
