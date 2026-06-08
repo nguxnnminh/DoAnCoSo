@@ -814,92 +814,12 @@ Sử dụng mô hình Google Gemini 2.5 Flash thông qua REST API. Hệ thống 
 - `get_best_sellers(limit)`
 - `get_product_details(name)`
 
-```mermaid
-graph TB
-    subgraph Frontend
-        ChatUI["Giao diện Chat<br/>(JavaScript Widget)"]
-    end
-
-    subgraph SpringBoot["Spring Boot App"]
-        ChatAPI["ChatbotApiController<br/>POST /api/chatbot"]
-        ChatSvc["AiChatbotService"]
-        GeminiClient["GeminiChatClient"]
-        ProductSvc["ProductService"]
-        ProductRepo["ProductRepository"]
-    end
-
-    subgraph GoogleCloud["Google Cloud Platform"]
-        GeminiAPI["Gemini 2.5 Flash API<br/>(Function Calling)"]
-    end
-
-    subgraph Database
-        MySQL[("MySQL Database")]
-    end
-
-    subgraph Functions["Tool Functions"]
-        F1["search_products"]
-        F2["get_best_sellers"]
-        F3["get_product_details"]
-    end
-
-    ChatUI -- "Gửi tin nhắn" --> ChatAPI
-    ChatAPI --> ChatSvc
-    ChatSvc --> GeminiClient
-    GeminiClient -- "HTTP POST" --> GeminiAPI
-    GeminiAPI -- "Yêu cầu gọi hàm (functionCall)" --> GeminiClient
-    GeminiClient --> ChatSvc
-    ChatSvc --> F1 & F2 & F3
-    F1 & F2 & F3 --> ProductSvc
-    ProductSvc --> ProductRepo
-    ProductRepo --> MySQL
-    ChatSvc -- "Trả kết quả hàm (functionResponse)" --> GeminiClient
-    GeminiClient -- "Tạo câu trả lời cuối cùng" --> ChatSvc
-    ChatSvc -- "Trả về phản hồi" --> ChatAPI
-    ChatAPI -- "JSON {reply, products}" --> ChatUI
-
-    style Frontend fill:#f9f9f9,stroke:#333
-    style SpringBoot fill:#fff9e6,stroke:#ff9900
-    style GoogleCloud fill:#e6f2ff,stroke:#0066cc
-    style Database fill:#ffe6e6,stroke:#cc0000
-    style Functions fill:#e6ffe6,stroke:#00cc00
-```
-*Hình 3.12: Sơ đồ cấu trúc kiến trúc AI Chatbot*
+![Hình 3.12: Sơ đồ cấu trúc kiến trúc AI Chatbot](docs/images/architecture_chatbot_1780671889265.png)
 
 ### 3.7.2. Sơ đồ tuần tự xử lý tin nhắn Chatbot
 Minh họa luồng hoạt động lặp tối đa 4 bước (MAX_STEPS) để lấy thông tin sản phẩm và tư vấn cho khách hàng:
 
-```mermaid
-sequenceDiagram
-    actor User as Người dùng
-    participant Browser as Trình duyệt Client
-    participant ChatAPI as ChatbotApiController
-    participant ChatSvc as AiChatbotService
-    participant Gemini as GeminiChatClient
-    participant GeminiAPI as Google Gemini API
-    participant ProductSvc as ProductService
-    participant DB as MySQL
-
-    User->>Browser: "Tìm áo hoodie đen dưới 300k"
-    Browser->>ChatAPI: POST /api/chatbot {message}
-    ChatAPI->>ChatSvc: processMessage(message, history)
-    ChatSvc->>ChatSvc: Xây dựng System Prompt & Tool Declarations
-    ChatSvc->>Gemini: generateContent(payload)
-    Gemini->>GeminiAPI: HTTP POST /v1beta/models/gemini-2.5-flash
-    GeminiAPI-->>Gemini: functionCall: search_products(color="đen", maxPrice=300000)
-    Gemini-->>ChatSvc: Yêu cầu gọi hàm
-    ChatSvc->>ProductSvc: findWithFilter(color, price)
-    ProductSvc->>DB: Query sản phẩm thực tế
-    DB-->>ProductSvc: Danh sách sản phẩm
-    ProductSvc-->>ChatSvc: Products data
-    ChatSvc->>Gemini: Gửi kết quả hàm (functionResponse)
-    Gemini->>GeminiAPI: Gửi kết quả hàm để tổng hợp
-    GeminiAPI-->>Gemini: Trả về câu trả lời tự nhiên dạng văn bản
-    Gemini-->>ChatSvc: Final Text Response
-    ChatSvc-->>ChatAPI: ChatbotResponse {reply, products}
-    ChatAPI-->>Browser: JSON response
-    Browser-->>User: Hiển thị đoạn chat + các thẻ sản phẩm gợi ý
-```
-*Hình 3.10: Sơ đồ tuần tự chức năng AI Chatbot*
+![Hình 3.10: Sơ đồ tuần tự chức năng AI Chatbot](docs/images/sequence_chatbot_1780671889265.png)
 
 <a name="_Toc231076821"></a>
 ## 3.8. Thiết kế Virtual Try-On
@@ -911,129 +831,19 @@ Xây dựng dịch vụ FastAPI (Python) làm nhiệm vụ suy luận xử lý h
 - **Tầng 1 (Cloud)**: Sử dụng Replicate API chạy mô hình IDM-VTON (nhanh, chất lượng cao).
 - **Tầng 2 (Local GPU - Fallback)**: Khi Replicate API hết tiền/hết quota (lỗi HTTP 402 hoặc 429), FastAPI tự động chuyển luồng xử lý xuống GPU nội bộ chạy mô hình CatVTON (mix-48k-1024, fp16) kết hợp SegFormer B2 để tạo mặt nạ vùng cơ thể (Agnostic Mask).
 
-```mermaid
-graph TB
-    subgraph Frontend
-        TryOnUI["Try-On Studio / Modal chi tiết SP"]
-    end
-
-    subgraph SpringBoot["Spring Boot Server"]
-        TryOnAPI["TryOnApiController<br/>POST /api/tryon/generate"]
-        TryOnSvc["TryOnService"]
-        FileSvc["FileStorageService"]
-    end
-
-    subgraph PythonServer["FastAPI Server (Port 8081)"]
-        Router["FastAPI Router"]
-        Dispatcher["Inference Dispatcher"]
-        
-        subgraph CloudTier["Tầng 1: Cloud API"]
-            ReplicateAPI["Replicate API<br/>(idm-vton)"]
-        end
-        
-        subgraph LocalTier["Tầng 2: Local GPU (Fallback)"]
-            CatVTON["CatVTON Pipeline<br/>(mix-48k-1024)"]
-            SegFormer["SegFormer B2<br/>(Human Parsing)"]
-            Rembg["rembg<br/>(Tách nền quần áo)"]
-        end
-    end
-
-    TryOnUI -- "Tải ảnh người + Chọn SP" --> TryOnAPI
-    TryOnAPI --> TryOnSvc
-    TryOnSvc -- "HTTP Multipart Request" --> Router
-    Router --> Dispatcher
-    Dispatcher -- "Thử gọi Cloud" --> ReplicateAPI
-    Dispatcher -- "Tự động chuyển đổi khi lỗi 402/429" --> CatVTON
-    CatVTON --> SegFormer
-    Router --> Rembg
-
-    style Frontend fill:#f9f9f9,stroke:#333
-    style SpringBoot fill:#fff9e6,stroke:#ff9900
-    style PythonServer fill:#f3e5f5,stroke:#7b1fa2
-    style CloudTier fill:#e8f5e9,stroke:#2e7d32
-    style LocalTier fill:#fff3e0,stroke:#ef6c00
-```
-*Hình 3.13: Sơ đồ cấu trúc kiến trúc Virtual Try-On*
+![Hình 3.13: Sơ đồ cấu trúc kiến trúc Virtual Try-On](docs/images/architecture_tryon_1780671889265.png)
 
 ### 3.8.2. Sơ đồ tuần tự xử lý thử đồ ảo
 Minh họa luồng gọi API và cơ chế fallback tự động từ Cloud sang Local khi sinh ảnh thử đồ:
 
-```mermaid
-sequenceDiagram
-    actor User as Người dùng
-    participant Browser as Trình duyệt Client
-    participant TryOnAPI as TryOnApiController
-    participant TryOnSvc as TryOnService
-    participant FastAPI as FastAPI Server (8081)
-    participant Replicate as Replicate Cloud API
-    participant CatVTON as CatVTON Local GPU
-    participant SegFormer as SegFormer Model
-
-    User->>Browser: Upload ảnh chân dung & bấm "Thử đồ"
-    Browser->>TryOnAPI: POST /api/tryon/generate {personImage, productId}
-    TryOnAPI->>TryOnAPI: Kiểm tra Magic Bytes & Kích thước file
-    TryOnAPI->>TryOnSvc: generateTryOnAsync()
-    TryOnSvc->>FastAPI: POST /tryon (person_image, garment_image, category)
-    FastAPI->>FastAPI: Kiểm tra cấu hình Replicate API Key
-    alt Thử gọi Cloud (IDM-VTON) thành công
-        FastAPI->>Replicate: Gọi API Replicate
-        Replicate-->>FastAPI: Trả về URL ảnh kết quả
-        FastAPI->>FastAPI: Tải ảnh kết quả về bộ nhớ đệm
-    else Cloud lỗi / Hết quota (Fallback)
-        FastAPI->>SegFormer: Phân tích ảnh người → ATR Label Map
-        SegFormer-->>FastAPI: Agnostic Mask (Mặt nạ che vùng quần áo)
-        FastAPI->>CatVTON: Thực hiện suy luận (UniPC 20 steps)
-        CatVTON-->>FastAPI: Trả về ảnh kết quả đã ghép đồ
-    end
-    FastAPI-->>TryOnSvc: Trả về mảng byte ảnh JPEG
-    TryOnSvc-->>TryOnAPI: byte[]
-    TryOnAPI-->>Browser: HTTP 200 (image/jpeg)
-    Browser-->>User: Hiển thị ảnh kết quả thử đồ trực quan
-```
-*Hình 3.11: Sơ đồ tuần tự chức năng Virtual Try-On*
+![Hình 3.11: Sơ đồ tuần tự chức năng Virtual Try-On](docs/images/sequence_tryon_1780671889265.png)
 
 <a name="_Toc231076822"></a>
 ## 3.9. Thiết kế bảo mật hệ thống
 
 Hệ thống thiết kế luồng bảo mật kép (Dual Security Filter Chain) trong Spring Security 6 nhằm kiểm soát tối đa các nguy cơ tấn công mạng:
 
-```mermaid
-graph TB
-    subgraph Request["Yêu cầu gửi đến"]
-        R1["Web Request<br/>(Thymeleaf UI)"]
-        R2["API Request<br/>(/api/**)"]
-    end
-
-    subgraph WebChain["Web Security Chain (Order 2)"]
-        CSRF_ON["CSRF Bảo vệ: Bật ✅"]
-        FormLogin["Đăng nhập Form HTML"]
-        SessionAuth["Session Authentication<br/>(Spring Session JDBC)"]
-    end
-
-    subgraph ApiChain["API Security Chain (Order 1)"]
-        CSRF_OFF["CSRF Bảo vệ: Tắt ❌"]
-        RateLimit["LoginRateLimitFilter<br/>(Chống brute-force)"]
-        JWT_Filter["JwtAuthenticationFilter<br/>(Bearer Token)"]
-        CORS_Filter["CORS Configuration"]
-    end
-
-    subgraph Common["Thành phần dùng chung"]
-        BCrypt["BCryptPasswordEncoder"]
-        UserDetailsService["CustomUserDetailsService"]
-        Headers["Security Headers<br/>(HSTS, X-Frame-Options DENY)"]
-    end
-
-    R1 --> WebChain
-    R2 --> ApiChain
-    WebChain --> Common
-    ApiChain --> Common
-
-    style Request fill:#f9f9f9,stroke:#333
-    style WebChain fill:#e6f2ff,stroke:#0066cc
-    style ApiChain fill:#fff9e6,stroke:#ff9900
-    style Common fill:#ffe6e6,stroke:#cc0000
-```
-*Hình 3.14: Sơ đồ kiến trúc bảo mật hệ thống*
+![Hình 3.14: Sơ đồ kiến trúc bảo mật hệ thống](docs/images/architecture_security_1780671889265.png)
 
 Các giải pháp thiết kế bảo mật chi tiết:
 - **Xác thực API bằng JWT**: Mọi yêu cầu từ ứng dụng di động Flutter gửi tới `/api/**` đều phải đính kèm tiêu đề `Authorization: Bearer <token>`. Mã JWT sử dụng thuật toán ký HS256, thời hạn 24 giờ.

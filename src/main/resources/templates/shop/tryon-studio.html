@@ -1,596 +1,738 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" th:replace="~{layout/base :: layout(~{::content}, 'Try-On Studio — Nova')}">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/base :: layout(~{::content}, 'Try-On Studio — Nova')}">
 <div th:fragment="content">
-  <style>
-    /* ── STUDIO LAYOUT ───────────────────────────────── */
-    .studio-grid {
-      display: grid;
-      grid-template-columns: 1fr 420px;
-      gap: 0;
-      min-height: 80vh;
-    }
-    @media (max-width: 1023px) {
-      .studio-grid { grid-template-columns: 1fr; }
-    }
+<style>
+  /* ── STUDIO LAYOUT ───────────────────────────────────────── */
+  .studio-root {
+    display: grid;
+    grid-template-columns: 1fr 260px 1fr;
+    min-height: calc(100vh - 72px - 36px);
+    border-top: 1px solid #1c1c1c;
+  }
+  @media (max-width: 1279px) {
+    .studio-root { grid-template-columns: 1fr 240px; }
+    .col-result  { display: none; }
+  }
+  @media (max-width: 767px) {
+    .studio-root { grid-template-columns: 1fr; }
+  }
 
-    /* ── GARMENT TABS ────────────────────────────────── */
-    .tab-btn {
-      padding: 10px 0;
-      background: none;
-      border: none;
-      border-bottom: 1px solid transparent;
-      color: #666;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.65rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tab-btn:hover { color: #aaa; }
-    .tab-btn.active { color: #e8e8e4; border-bottom-color: #555; }
+  /* ── COLUMN BASE ────────────────────────────────────────── */
+  .studio-col {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #1c1c1c;
+  }
+  .studio-col:last-child { border-right: none; }
 
-    .tab-panel { display: none; }
-    .tab-panel.active { display: grid; }
+  .col-head {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid #1c1c1c;
+    flex-shrink: 0;
+  }
+  .col-step {
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #4a4a48;
+    margin-bottom: 3px;
+  }
+  .col-name {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #888;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+  }
+  .col-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a transparent;
+  }
+  .col-body::-webkit-scrollbar { width: 3px; }
+  .col-body::-webkit-scrollbar-thumb { background: #2a2a2a; }
 
-    /* ── PRODUCT CARD ────────────────────────────────── */
-    .tryon-card {
-      cursor: pointer;
-      border: 1px solid transparent;
-      background: transparent;
-      color: inherit;
-      padding: 0;
-      text-align: left;
-      font: inherit;
-      transition: all 0.2s;
-      position: relative;
-    }
-    .tryon-card:hover { border-color: #333; }
-    .tryon-card.selected { border-color: #f5f5f3; }
-    .tryon-card.selected::after {
-      content: '';
-      position: absolute;
-      top: 6px; right: 6px;
-      width: 8px; height: 8px;
-      background: #f5f5f3;
-      border-radius: 50%;
-    }
-    .tryon-card img {
-      width: 100%;
-      aspect-ratio: 3/4;
-      object-fit: cover;
-      display: block;
-      background: #111;
-    }
-    .tryon-card-info {
-      padding: 6px 2px;
-    }
+  /* ── GARMENT TABS ───────────────────────────────────────── */
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid #1c1c1c;
+    flex-shrink: 0;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 11px 4px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid transparent;
+    margin-bottom: -1px;
+    color: #484848;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+  }
+  .tab-btn:hover { color: #777; background: #0d0d0d; }
+  .tab-btn.active { color: #e8e8e4; border-bottom-color: #888; }
 
-    /* ── SELECTED OUTFIT ─────────────────────────────── */
-    .outfit-slot {
-      border: 1px solid #272727;
-      padding: 12px;
-      min-height: 80px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: border-color 0.2s;
-      cursor: pointer;
-    }
-    .outfit-slot:hover { border-color: #444; }
-    .outfit-slot.filled { border-color: #444; }
-    .outfit-slot img {
-      width: 52px;
-      height: 68px;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: grid; }
 
-    /* ── UPLOAD AREA ──────────────────────────────────── */
-    .upload-zone {
-      border: 1px dashed #333;
-      border-radius: 4px;
-      padding: 24px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 320px;
-      background: #0a0a0a;
-      transition: border-color 0.2s, background 0.2s;
-      cursor: pointer;
-    }
-    .upload-zone:hover { border-color: #666; background:#0d0d0d; }
-    .upload-zone.has-image { border-style: solid; padding: 12px; }
+  /* ── PRODUCT CARDS ──────────────────────────────────────── */
+  .g-card {
+    cursor: pointer;
+    border: 1px solid #1e1e1e;
+    background: #0d0d0d;
+    padding: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    transition: border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .g-card:hover  { border-color: #363636; }
+  .g-card.active { border-color: #888; }
+  .g-card-check {
+    position: absolute; top: 7px; right: 7px;
+    width: 18px; height: 18px;
+    background: #f5f5f3; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    transition: opacity 0.18s, transform 0.18s;
+    z-index: 2;
+  }
+  .g-card.active .g-card-check { opacity: 1; transform: scale(1); }
+  .g-card img {
+    width: 100%; aspect-ratio: 3/4; object-fit: cover;
+    display: block; background: #111;
+  }
+  .g-card-info {
+    padding: 5px 7px 7px;
+    border-top: 1px solid #1a1a1a;
+  }
 
-    /* ── RESULT IMAGE ─────────────────────────────────── */
-    #studioResultImg, #studioPersonPreview { cursor: zoom-in; }
+  /* ── UPLOAD ZONE ────────────────────────────────────────── */
+  .upload-zone {
+    border: 1px dashed #2a2a2a;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover { border-color: #444; background: #0d0d0d; }
+  .upload-zone.filled { border-style: solid; border-color: #2a2a2a; }
 
-    /* ── LIGHTBOX ─────────────────────────────────────── */
-    .tryon-lightbox {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 10000;
-      background: rgba(0,0,0,0.94);
-      backdrop-filter: blur(8px);
-      align-items: center;
-      justify-content: center;
-      padding: 32px;
-      cursor: zoom-out;
-    }
-    .tryon-lightbox.open { display: flex; }
-    .tryon-lightbox img {
-      max-width: 92vw;
-      max-height: 90vh;
-      object-fit: contain;
-      box-shadow: 0 0 60px rgba(0,0,0,0.6);
-    }
-    .tryon-lightbox-close {
-      position: fixed; top: 22px; right: 26px;
-      background: none; border: none; color: #ccc; cursor: pointer;
-      width: 44px; height: 44px;
-    }
-    .tryon-lightbox-close:hover { color: #fff; }
-  </style>
+  /* ── OUTFIT SLOTS ───────────────────────────────────────── */
+  .outfit-slot {
+    border: 1px solid #1e1e1e;
+    background: #0a0a0a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    min-height: 68px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .outfit-slot:hover { border-color: #323232; }
+  .outfit-slot.filled { border-color: #2a2a2a; background: #0d0d0d; }
+  .outfit-slot img { width: 40px; height: 52px; object-fit: cover; flex-shrink: 0; background: #111; }
+  .slot-icon {
+    width: 26px; height: 26px;
+    border: 1px solid #222; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: #333;
+  }
 
-  <!-- ── PAGE HEADER ──────────────────────────────────── -->
-  <div class="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-12">
-    <div class="flex justify-between items-end pt-10 md:pt-16 mb-8 md:mb-12 border-b border-zinc-900 pb-6 md:pb-8">
-      <div>
-        <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-2">Nova Store</p>
-        <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#f5f5f3]">
-          Try-On Studio
-        </h1>
-      </div>
-      <p class="text-xs tracking-widest uppercase text-zinc-500">
-        <span th:text="${tryOnProducts.size()}">0</span>&nbsp;Items Available
-      </p>
+  /* ── LOADING STEPS ──────────────────────────────────────── */
+  .step-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: #282828; padding: 5px 0;
+    transition: color 0.35s;
+  }
+  .step-dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #282828; flex-shrink: 0;
+    transition: background 0.35s;
+  }
+  .step-row.active { color: #777; }
+  .step-row.active .step-dot { background: #777; }
+  .step-row.done { color: #3a3a3a; }
+  .step-row.done .step-dot { background: #3a3a3a; }
+
+  .spinner {
+    width: 22px; height: 22px;
+    border: 1.5px solid #1e1e1e; border-top-color: #666;
+    border-radius: 50%; animation: spin 1s linear infinite;
+  }
+
+  /* ── RESULT ACTIONS ────────────────────────────────────── */
+  .res-actions {
+    display: flex; gap: 6px;
+    padding: 10px 20px 12px;
+    border-top: 1px solid #1c1c1c;
+    flex-shrink: 0;
+  }
+  .res-btn {
+    flex: 1; padding: 10px 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+    text-align: center; text-decoration: none; border: none;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .res-btn-outline { background: transparent; border: 1px solid #272727; color: #666; }
+  .res-btn-outline:hover { border-color: #555; color: #ccc; }
+  .res-btn-fill { background: #f5f5f3; color: #0a0a0a; }
+  .res-btn-fill:hover { background: #d8d8d4; }
+
+  /* ── GENERATE BUTTON ────────────────────────────────────── */
+  .gen-btn {
+    width: 100%; padding: 13px;
+    background: #f5f5f3; color: #0a0a0a; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 0.68rem;
+    letter-spacing: 0.2em; text-transform: uppercase; font-weight: 500;
+    cursor: pointer; transition: background 0.2s, opacity 0.2s;
+  }
+  .gen-btn:hover:not(:disabled) { background: #d8d8d4; }
+  .gen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── LIGHTBOX ───────────────────────────────────────────── */
+  .lightbox {
+    display: none; position: fixed; inset: 0; z-index: 10000;
+    background: rgba(0,0,0,0.96); backdrop-filter: blur(10px);
+    align-items: center; justify-content: center; padding: 40px; cursor: zoom-out;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 88vw; max-height: 88vh; object-fit: contain; }
+  .lightbox-x {
+    position: fixed; top: 20px; right: 24px;
+    width: 40px; height: 40px;
+    background: none; border: 1px solid #333; color: #777; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .lightbox-x:hover { border-color: #888; color: #f5f5f3; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes revealUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reveal { animation: revealUp 0.4s cubic-bezier(0.22,1,0.36,1); }
+</style>
+
+<!-- ── PAGE HEADER ────────────────────────────────────────── -->
+<div class="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-12">
+  <div class="flex justify-between items-end pt-10 md:pt-14 mb-6 border-b border-zinc-900 pb-6">
+    <div>
+      <p class="text-xs tracking-widest3 uppercase text-zinc-700 mb-2">Nova Studio</p>
+      <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#f5f5f3]">Try-On Studio</h1>
+    </div>
+    <p class="text-xs tracking-widest uppercase text-zinc-600">
+      <span th:text="${tryOnProducts.size()}">0</span>&nbsp;Items
+    </p>
+  </div>
+</div>
+
+<!-- ── EMPTY STATE ───────────────────────────────────────── -->
+<div th:if="${tryOnProducts.isEmpty()}" class="max-w-[1400px] mx-auto px-4 md:px-8 lg:px-12 text-center py-20 md:py-28">
+  <p class="font-display text-5xl md:text-7xl tracking-wide text-zinc-700 mb-3">No Items Available</p>
+  <p class="text-xs tracking-widest uppercase text-zinc-700 mb-8">No try-on products yet.</p>
+  <a th:href="@{/products}"
+     class="h-11 md:h-12 px-8 bg-[#f5f5f3] text-[#0a0a0a] text-xs tracking-widest uppercase
+            no-underline font-medium inline-flex items-center transition-colors hover:bg-[#d8d8d4]">
+    Browse Shop
+  </a>
+</div>
+
+<!-- ── STUDIO GRID ────────────────────────────────────────── -->
+<div th:unless="${tryOnProducts.isEmpty()}" class="studio-root">
+
+  <!-- ══ COL 1 · Garments ══ -->
+  <div class="studio-col">
+    <div class="col-head">
+      <p class="col-step">Step 01</p>
+      <p class="col-name">Select Garments</p>
     </div>
 
-    <!-- ── EMPTY STATE ──────────────────────────────────── -->
-    <div th:if="${tryOnProducts.isEmpty()}" class="text-center py-20 md:py-28">
-      <p class="font-display text-5xl md:text-7xl tracking-wide text-zinc-700 mb-3">No Items Available</p>
-      <p class="text-xs tracking-widest uppercase text-zinc-700 mb-8">
-        No Try-On products are available yet.
-      </p>
-      <a th:href="@{/products}"
-         class="h-11 md:h-12 px-8 bg-[#f5f5f3] text-[#0a0a0a] text-xs tracking-widest uppercase
-                no-underline font-medium inline-flex items-center transition-colors duration-200 hover:bg-[#d8d8d4]">
-        Browse Shop
-      </a>
+    <div class="tab-bar" role="tablist">
+      <button type="button" class="tab-btn active" role="tab" aria-selected="true"
+              aria-controls="panel-upper" onclick="switchTab('upper',this)">Tops</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false"
+              aria-controls="panel-lower" onclick="switchTab('lower',this)">Bottoms</button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false"
+              aria-controls="panel-all" onclick="switchTab('all',this)">All</button>
+    </div>
+
+    <div class="col-body">
+      <!-- Upper -->
+      <div id="panel-upper" class="tab-panel active grid grid-cols-2 xl:grid-cols-3 gap-1.5" role="tabpanel">
+        <button type="button" th:each="p : ${upperProducts}" class="g-card"
+                th:data-id="${p.id}" th:data-type="${p.garmentType}"
+                th:data-name="${p.name}"
+                th:data-img="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}"
+                th:data-price="${p.minPrice}"
+                aria-pressed="false" onclick="selectProduct(this)">
+          <span class="g-card-check">
+            <svg width="9" height="9" fill="none" stroke="#111" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </span>
+          <img th:src="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}" th:alt="${p.name}" loading="lazy"/>
+          <div class="g-card-info">
+            <p class="text-[0.65rem] tracking-widest uppercase text-zinc-500 leading-snug truncate" th:text="${p.name}"></p>
+            <p class="text-[0.6rem] text-zinc-700 mt-0.5"
+               th:text="${p.minPrice!=null and p.minPrice>0}?${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')}+' ₫':'—'"></p>
+          </div>
+        </button>
+        <p th:if="${upperProducts.isEmpty()}"
+           class="col-span-full py-10 text-center text-[0.6rem] tracking-widest uppercase text-zinc-700">
+          No tops available
+        </p>
+      </div>
+
+      <!-- Lower -->
+      <div id="panel-lower" class="tab-panel grid grid-cols-2 xl:grid-cols-3 gap-1.5" role="tabpanel">
+        <button type="button" th:each="p : ${lowerProducts}" class="g-card"
+                th:data-id="${p.id}" th:data-type="${p.garmentType}"
+                th:data-name="${p.name}"
+                th:data-img="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}"
+                th:data-price="${p.minPrice}"
+                aria-pressed="false" onclick="selectProduct(this)">
+          <span class="g-card-check">
+            <svg width="9" height="9" fill="none" stroke="#111" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </span>
+          <img th:src="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}" th:alt="${p.name}" loading="lazy"/>
+          <div class="g-card-info">
+            <p class="text-[0.65rem] tracking-widest uppercase text-zinc-500 leading-snug truncate" th:text="${p.name}"></p>
+            <p class="text-[0.6rem] text-zinc-700 mt-0.5"
+               th:text="${p.minPrice!=null and p.minPrice>0}?${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')}+' ₫':'—'"></p>
+          </div>
+        </button>
+        <p th:if="${lowerProducts.isEmpty()}"
+           class="col-span-full py-10 text-center text-[0.6rem] tracking-widest uppercase text-zinc-700">
+          No bottoms available
+        </p>
+      </div>
+
+      <!-- All -->
+      <div id="panel-all" class="tab-panel grid grid-cols-2 xl:grid-cols-3 gap-1.5" role="tabpanel">
+        <button type="button" th:each="p : ${tryOnProducts}" class="g-card"
+                th:data-id="${p.id}" th:data-type="${p.garmentType}"
+                th:data-name="${p.name}"
+                th:data-img="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}"
+                th:data-price="${p.minPrice}"
+                aria-pressed="false" onclick="selectProduct(this)">
+          <span class="g-card-check">
+            <svg width="9" height="9" fill="none" stroke="#111" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4.5 12.75l6 6 9-13.5"/></svg>
+          </span>
+          <img th:src="${p.images!=null and !p.images.isEmpty()?p.images[0].imageUrl:'/images/no-image.png'}" th:alt="${p.name}" loading="lazy"/>
+          <div class="g-card-info">
+            <p class="text-[0.65rem] tracking-widest uppercase text-zinc-500 leading-snug truncate" th:text="${p.name}"></p>
+            <p class="text-[0.6rem] text-zinc-700 mt-0.5"
+               th:text="${p.minPrice!=null and p.minPrice>0}?${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')}+' ₫':'—'"></p>
+          </div>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ── MAIN STUDIO ──────────────────────────────────── -->
-  <div th:unless="${tryOnProducts.isEmpty()}" class="studio-grid">
-
-    <!-- LEFT: Product Browser -->
-    <div class="border-r border-zinc-900 px-4 md:px-8 lg:px-10 py-8">
-
-      <!-- Tabs -->
-      <div class="flex gap-6 mb-6 border-b border-zinc-900 pb-0" role="tablist" aria-label="Try-on product categories">
-        <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-upper" onclick="switchTab('upper', this)">Tops</button>
-        <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-lower" onclick="switchTab('lower', this)">Bottoms</button>
-        <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-all" onclick="switchTab('all', this)">All</button>
-      </div>
-
-      <!-- Upper Body Panel -->
-      <div id="panel-upper" class="tab-panel active grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" role="tabpanel">
-        <button type="button" th:each="p : ${upperProducts}" class="tryon-card"
-             th:data-id="${p.id}" th:data-type="${p.garmentType}"
-             th:data-name="${p.name}"
-             th:data-img="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}"
-             th:data-price="${p.minPrice}"
-             aria-pressed="false"
-             onclick="selectProduct(this)">
-          <img th:src="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}" th:alt="${p.name}" />
-          <div class="tryon-card-info">
-            <p class="text-[0.68rem] tracking-widest uppercase text-zinc-400 leading-tight" th:text="${p.name}"></p>
-            <p class="text-[0.62rem] tracking-wide text-zinc-600 mt-0.5"
-               th:text="${p.minPrice != null and p.minPrice > 0} ? ${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')} + ' ₫' : '—'"></p>
-          </div>
-        </button>
-        <p th:if="${upperProducts.isEmpty()}" class="col-span-full text-zinc-700 text-xs tracking-widest uppercase py-10 text-center">No tops available</p>
-      </div>
-
-      <!-- Lower Body Panel -->
-      <div id="panel-lower" class="tab-panel grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" role="tabpanel">
-        <button type="button" th:each="p : ${lowerProducts}" class="tryon-card"
-             th:data-id="${p.id}" th:data-type="${p.garmentType}"
-             th:data-name="${p.name}"
-             th:data-img="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}"
-             th:data-price="${p.minPrice}"
-             aria-pressed="false"
-             onclick="selectProduct(this)">
-          <img th:src="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}" th:alt="${p.name}" />
-          <div class="tryon-card-info">
-            <p class="text-[0.68rem] tracking-widest uppercase text-zinc-400 leading-tight" th:text="${p.name}"></p>
-            <p class="text-[0.62rem] tracking-wide text-zinc-600 mt-0.5"
-               th:text="${p.minPrice != null and p.minPrice > 0} ? ${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')} + ' ₫' : '—'"></p>
-          </div>
-        </button>
-        <p th:if="${lowerProducts.isEmpty()}" class="col-span-full text-zinc-700 text-xs tracking-widest uppercase py-10 text-center">No bottoms available</p>
-      </div>
-
-      <!-- All Panel -->
-      <div id="panel-all" class="tab-panel grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" role="tabpanel">
-        <button type="button" th:each="p : ${tryOnProducts}" class="tryon-card"
-             th:data-id="${p.id}" th:data-type="${p.garmentType}"
-             th:data-name="${p.name}"
-             th:data-img="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}"
-             th:data-price="${p.minPrice}"
-             aria-pressed="false"
-             onclick="selectProduct(this)">
-          <img th:src="${p.images != null and !p.images.isEmpty() ? p.images[0].imageUrl : '/images/no-image.png'}" th:alt="${p.name}" />
-          <div class="tryon-card-info">
-            <p class="text-[0.68rem] tracking-widest uppercase text-zinc-400 leading-tight" th:text="${p.name}"></p>
-            <p class="text-[0.62rem] tracking-wide text-zinc-600 mt-0.5"
-               th:text="${p.minPrice != null and p.minPrice > 0} ? ${#numbers.formatDecimal(p.minPrice,0,'POINT',0,'COMMA')} + ' ₫' : '—'"></p>
-          </div>
-        </button>
-      </div>
+  <!-- ══ COL 2 · Photo + Outfit + Generate ══ -->
+  <div class="studio-col" style="background:#0a0a0a;">
+    <div class="col-head">
+      <p class="col-step">Step 02</p>
+      <p class="col-name">Photo &amp; Outfit</p>
     </div>
 
-    <!-- RIGHT: Outfit Builder Sidebar -->
-    <div class="px-5 py-8 bg-[#0a0a0a] lg:sticky lg:top-[108px] lg:self-start lg:max-h-[calc(100vh-108px)] lg:overflow-y-auto">
+    <div class="col-body" style="display:flex; flex-direction:column; gap:10px;">
 
-      <p class="text-[0.6rem] tracking-widest3 uppercase text-zinc-600 mb-5">Your Outfit</p>
-
-      <!-- Person Photo Upload -->
-      <div class="mb-5">
-        <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Your Photo</p>
-        <label class="upload-zone" id="studioUploadZone" for="studioPersonInput">
-          <img id="studioPersonPreview" style="display:none; max-height:420px; width:100%; object-fit:contain; border-radius:3px;"
-               onclick="event.preventDefault(); openStudioLightbox(this.src);" />
-          <div id="studioUploadPrompt" style="display:flex; flex-direction:column; align-items:center; gap:10px;">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.3" aria-hidden="true">
-              <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-            </svg>
-            <span id="studioUploadLabel"
-                   style="font-size:0.7rem; letter-spacing:0.15em; text-transform:uppercase; color:#888; cursor:pointer;">
-              Upload full-body photo
-            </span>
-            <p style="font-size:0.58rem; color:#444; margin:0; letter-spacing:0.12em; text-transform:uppercase;">Standing pose · simple background</p>
+      <!-- Upload zone -->
+      <div>
+        <p class="text-[0.58rem] tracking-[0.22em] uppercase text-zinc-700 mb-2">Your Photo</p>
+        <label class="upload-zone" id="uploadZone" for="personInput" style="min-height:160px; border-radius:2px;">
+          <img id="personPreview"
+               style="display:none; width:100%; max-height:240px; object-fit:contain; cursor:zoom-in;"
+               onclick="event.preventDefault(); openLightbox(this.src)" alt="Your photo" />
+          <div id="uploadPrompt" style="display:flex; flex-direction:column; align-items:center; gap:8px; padding:20px 12px;">
+            <div style="width:32px;height:32px;border:1px solid #222;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="1.5">
+                <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+              </svg>
+            </div>
+            <p class="text-[0.62rem] tracking-widest uppercase text-zinc-600">Upload full-body photo</p>
+            <p class="text-[0.54rem] tracking-widest uppercase text-zinc-800">Standing · simple bg</p>
           </div>
-          <p id="studioChangePhoto" style="display:none; font-size:0.6rem; color:#777; margin:10px 0 0; letter-spacing:0.15em; text-transform:uppercase;">Change photo</p>
-          <input type="file" id="studioPersonInput" accept="image/*" style="display:none;" onchange="handleStudioUpload(this)">
+          <p id="changePhoto" style="display:none;"
+             class="text-[0.6rem] tracking-widest uppercase text-zinc-700 mt-2 mb-3 cursor-pointer">
+            ↑ Change photo
+          </p>
+          <input type="file" id="personInput" accept="image/*" style="display:none;" onchange="handleUpload(this)">
         </label>
       </div>
 
-      <!-- Selected Slots -->
-      <div class="mb-5">
-        <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Selected Items</p>
+      <!-- Selected items -->
+      <div>
+        <p class="text-[0.58rem] tracking-[0.22em] uppercase text-zinc-700 mb-2">Selected Outfit</p>
 
-        <div class="outfit-slot mb-2" id="slot-upper" role="button" tabindex="0" onclick="scrollToTab('upper')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTab('upper')}">
-          <div id="slot-upper-empty" class="w-full text-center">
-            <p class="text-[0.6rem] tracking-widest uppercase text-zinc-700">Top — select a top</p>
+        <!-- Top -->
+        <div class="outfit-slot mb-1.5" id="slot-upper" role="button" tabindex="0"
+             onclick="scrollToTab('upper')"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTab('upper')}">
+          <div id="slot-upper-empty" class="flex items-center gap-3 w-full">
+            <div class="slot-icon">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24">
+                <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-[0.62rem] tracking-widest uppercase text-zinc-700">Top</p>
+              <p class="text-[0.56rem] tracking-widest uppercase text-zinc-800 mt-0.5">Select a top →</p>
+            </div>
           </div>
           <div id="slot-upper-filled" style="display:none;" class="flex items-center gap-3 w-full">
             <img id="slot-upper-img" src="" alt="" />
             <div class="flex-1 min-w-0">
-              <p id="slot-upper-name" class="text-[0.65rem] tracking-widest uppercase text-zinc-400 truncate"></p>
-              <p id="slot-upper-price" class="text-[0.58rem] tracking-wide text-zinc-600 mt-0.5"></p>
+              <p class="text-[0.56rem] tracking-widest uppercase text-zinc-700 mb-0.5">Top</p>
+              <p id="slot-upper-name" class="text-[0.63rem] tracking-widest uppercase text-zinc-400 truncate"></p>
+              <p id="slot-upper-price" class="text-[0.58rem] text-zinc-700 mt-0.5"></p>
             </div>
-            <button type="button" aria-label="Clear selected top" onclick="event.stopPropagation(); clearSlot('upper')" class="text-zinc-700 hover:text-zinc-400 transition-colors" style="background:none;border:none;cursor:pointer;">
-              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            <button type="button" aria-label="Clear top"
+                    onclick="event.stopPropagation(); clearSlot('upper')"
+                    style="background:none;border:none;cursor:pointer;color:#333;padding:4px;transition:color .2s;"
+                    onmouseover="this.style.color='#888'" onmouseout="this.style.color='#333'">
+              <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
 
-        <div class="outfit-slot mb-2" id="slot-lower" role="button" tabindex="0" onclick="scrollToTab('lower')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTab('lower')}">
-          <div id="slot-lower-empty" class="w-full text-center">
-            <p class="text-[0.6rem] tracking-widest uppercase text-zinc-700">Bottom — select a bottom</p>
+        <!-- Bottom -->
+        <div class="outfit-slot" id="slot-lower" role="button" tabindex="0"
+             onclick="scrollToTab('lower')"
+             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToTab('lower')}">
+          <div id="slot-lower-empty" class="flex items-center gap-3 w-full">
+            <div class="slot-icon">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24">
+                <path d="M5 3h14l-2 10H7L5 3zM7 13l-2 8M17 13l2 8M12 13v8"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-[0.62rem] tracking-widest uppercase text-zinc-700">Bottom</p>
+              <p class="text-[0.56rem] tracking-widest uppercase text-zinc-800 mt-0.5">Select a bottom →</p>
+            </div>
           </div>
           <div id="slot-lower-filled" style="display:none;" class="flex items-center gap-3 w-full">
             <img id="slot-lower-img" src="" alt="" />
             <div class="flex-1 min-w-0">
-              <p id="slot-lower-name" class="text-[0.65rem] tracking-widest uppercase text-zinc-400 truncate"></p>
-              <p id="slot-lower-price" class="text-[0.58rem] tracking-wide text-zinc-600 mt-0.5"></p>
+              <p class="text-[0.56rem] tracking-widest uppercase text-zinc-700 mb-0.5">Bottom</p>
+              <p id="slot-lower-name" class="text-[0.63rem] tracking-widest uppercase text-zinc-400 truncate"></p>
+              <p id="slot-lower-price" class="text-[0.58rem] text-zinc-700 mt-0.5"></p>
             </div>
-            <button type="button" aria-label="Clear selected bottom" onclick="event.stopPropagation(); clearSlot('lower')" class="text-zinc-700 hover:text-zinc-400 transition-colors" style="background:none;border:none;cursor:pointer;">
-              <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+            <button type="button" aria-label="Clear bottom"
+                    onclick="event.stopPropagation(); clearSlot('lower')"
+                    style="background:none;border:none;cursor:pointer;color:#333;padding:4px;transition:color .2s;"
+                    onmouseover="this.style.color='#888'" onmouseout="this.style.color='#333'">
+              <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Generate Button -->
-      <button id="studioGenerateBtn" onclick="generateStudioTryOn()"
-              style="width:100%; padding:14px; background:#f5f5f3; color:#0a0a0a; border:none;
-                     font-family:'DM Sans',sans-serif; font-size:0.7rem; letter-spacing:0.18em;
-                     text-transform:uppercase; font-weight:500; cursor:pointer; transition:all 0.2s;"
-              onmouseover="this.style.background='#d8d8d4'"
-              onmouseout="this.style.background='#f5f5f3'">
-        Generate Try-On
-      </button>
-      <p id="studioStatus" role="status" aria-live="polite" class="text-xs leading-relaxed text-zinc-500 mt-3"></p>
+      <!-- Status -->
+      <p id="studioStatus" role="status" aria-live="polite"
+         class="text-[0.6rem] tracking-wide leading-relaxed min-h-[14px] text-zinc-700"></p>
 
-      <!-- Loading -->
-      <div id="studioLoading" style="display:none; text-align:center; padding:20px 0;">
-        <div style="width:28px; height:28px; border:1.5px solid #272727; border-top-color:#888;
-                    border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 10px;"></div>
-        <p style="font-size:10px; color:#444; letter-spacing:0.1em;">CatVTON processing… 30–120 seconds</p>
-      </div>
+    </div><!-- /col-body -->
 
-      <!-- Result -->
-      <div id="studioResult" style="display:none; margin-top:24px;">
-        <p class="text-[0.58rem] tracking-[0.25em] uppercase text-zinc-700 mb-2">Result</p>
-        <div style="border:1px solid #272727; border-radius:4px; padding:10px; background:#0f0f0f;">
-          <img id="studioResultImg" style="width:100%; object-fit:contain; border-radius:3px; min-height:300px; background:#0a0a0a;"
-               onclick="openStudioLightbox(this.src)" />
-          <p style="font-size:0.55rem; color:#444; margin:10px 0 0; letter-spacing:0.2em; text-transform:uppercase; text-align:center;">AI Generated Preview · tap to enlarge</p>
-          <a id="studioDownloadBtn" href="#" download="tryon-preview.jpg"
-             style="display:block; margin-top:12px; padding:12px; background:#f5f5f3; color:#0a0a0a;
-                    font-size:0.62rem; letter-spacing:0.2em; text-transform:uppercase; text-align:center;
-                    font-weight:500; text-decoration:none; transition:background 0.2s;"
-             onmouseover="this.style.background='#d8d8d4'" onmouseout="this.style.background='#f5f5f3'">
-            Download
-          </a>
-        </div>
-      </div>
+    <!-- Generate -->
+    <div style="padding:12px 20px 14px; border-top:1px solid #1c1c1c; flex-shrink:0;">
+      <button id="genBtn" class="gen-btn" onclick="generate()">Generate Try-On</button>
     </div>
   </div>
 
-  <!-- Lightbox -->
-  <div id="studioLightbox" class="tryon-lightbox" onclick="closeStudioLightbox()">
-    <button type="button" class="tryon-lightbox-close" aria-label="Close" onclick="closeStudioLightbox()">
-      <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-    <img id="studioLightboxImg" alt="Enlarged preview" />
+  <!-- ══ COL 3 · Result ══ -->
+  <div class="studio-col col-result">
+    <div class="col-head">
+      <p class="col-step">Step 03</p>
+      <p class="col-name">Preview Result</p>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingArea" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; gap:20px; padding:32px;">
+      <div class="spinner"></div>
+      <div style="width:100%; max-width:210px;">
+        <div id="s1" class="step-row active"><span class="step-dot"></span><span>Analyzing body structure</span></div>
+        <div id="s2" class="step-row"><span class="step-dot"></span><span>Building garment mask</span></div>
+        <div id="s3" class="step-row"><span class="step-dot"></span><span>Fitting garment</span></div>
+        <div id="s4" class="step-row"><span class="step-dot"></span><span>Refining details</span></div>
+      </div>
+      <p id="loadingNote" class="text-[0.57rem] tracking-widest uppercase text-zinc-800 text-center">30 – 120 seconds</p>
+    </div>
+
+    <!-- Placeholder -->
+    <div id="placeholder" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#222; padding:32px; text-align:center;">
+      <svg width="44" height="44" fill="none" stroke="currentColor" stroke-width="0.8" viewBox="0 0 24 24" style="opacity:.25;">
+        <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/>
+      </svg>
+      <p class="text-[0.58rem] tracking-widest uppercase text-zinc-800 leading-loose">
+        Upload photo<br>Select garment<br>Press Generate
+      </p>
+    </div>
+
+    <!-- Result image -->
+    <div id="resultArea" style="display:none; flex:1; flex-direction:column;">
+      <div style="flex:1; overflow:hidden; background:#080808; position:relative;">
+        <img id="resultImg"
+             style="width:100%; height:100%; object-fit:contain; cursor:zoom-in; display:block;"
+             onclick="openLightbox(this.src)" alt="Try-on result" />
+      </div>
+      <p class="text-[0.52rem] tracking-widest uppercase text-zinc-800 text-center py-2 flex-shrink-0">
+        AI Generated Preview · tap to enlarge
+      </p>
+    </div>
+
+    <!-- Actions -->
+    <div id="resultActions" style="display:none;" class="res-actions">
+      <a id="dlBtn" href="#" download="nova-tryon.jpg" class="res-btn res-btn-outline">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        Save
+      </a>
+      <button type="button" onclick="generate()" class="res-btn res-btn-outline">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+        </svg>
+        Retry
+      </button>
+      <a th:href="@{/products}" class="res-btn res-btn-fill">Shop Now</a>
+    </div>
   </div>
 
-  <style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+</div><!-- /studio-root -->
 
-  <script>
-    // ── State ──────────────────────────────────────────
-    let studioPersonId = null;
-    const selectedItems = { upper: null, lower: null };
 
-    // ── Lightbox ──────────────────────────────────────
-    function openStudioLightbox(src) {
-      if (!src) return;
-      document.getElementById('studioLightboxImg').src = src;
-      document.getElementById('studioLightbox').classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeStudioLightbox() {
-      document.getElementById('studioLightbox').classList.remove('open');
-      document.body.style.overflow = '';
-    }
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStudioLightbox(); });
+<!-- ── LIGHTBOX ────────────────────────────────────────────── -->
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+  <button type="button" class="lightbox-x" aria-label="Close" onclick="event.stopPropagation();closeLightbox()">
+    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+  <img id="lightboxImg" alt="Enlarged preview" />
+</div>
 
-    // ── Tab switching ─────────────────────────────────
-    function setStudioStatus(message, isError = false) {
-      const status = document.getElementById('studioStatus');
-      if (!status) return;
-      status.textContent = message || '';
-      status.style.color = isError ? '#bf6d6d' : '#9ca3af';
-    }
+<script>
+  let personId  = null;
+  const sel     = { upper: null, lower: null };
+  let stepTimer = null;
 
-    function switchTab(tab, btn) {
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
+  // ── helpers ───────────────────────────────────────────────
+  function setStatus(msg, err = false) {
+    const el = document.getElementById('studioStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = err ? '#9f4040' : '#5a5a5a';
+  }
+
+  function openLightbox(src) {
+    if (!src) return;
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+  // ── tabs ─────────────────────────────────────────────────
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    document.getElementById('panel-' + tab).classList.add('active');
+    btn?.classList.add('active');
+    btn?.setAttribute('aria-selected','true');
+  }
+  function scrollToTab(tab) {
+    const kw = tab === 'upper' ? 'tops' : 'bottoms';
+    document.querySelectorAll('.tab-btn').forEach(b => { if (b.textContent.trim().toLowerCase() === kw) b.click(); });
+  }
+
+  // ── product select ────────────────────────────────────────
+  function selectProduct(card) {
+    const { id, type, name, img, price } = card.dataset;
+    const slot = type === 'UPPER_BODY' ? 'upper' : type === 'LOWER_BODY' ? 'lower' : null;
+    if (!slot) return;
+
+    if (sel[slot]) {
+      document.querySelectorAll(`.g-card[data-id="${sel[slot].id}"]`).forEach(c => {
+        c.classList.remove('active'); c.setAttribute('aria-pressed','false');
       });
-      document.getElementById('panel-' + tab).classList.add('active');
-      btn?.classList.add('active');
-      btn?.setAttribute('aria-selected', 'true');
     }
+    sel[slot] = { id, name, img, price };
+    document.querySelectorAll(`.g-card[data-id="${id}"]`).forEach(c => {
+      c.classList.add('active'); c.setAttribute('aria-pressed','true');
+    });
+    fillSlot(slot, name, img, price);
+    setStatus(`${name} added to outfit.`);
+    window.novaTrack?.('studio_select', { productId: id, slot });
+  }
 
-    function scrollToTab(tab) {
-      const tabBtns = document.querySelectorAll('.tab-btn');
-      tabBtns.forEach(b => {
-        if (b.textContent.trim().toLowerCase().includes(tab === 'upper' ? 'top' : 'bottom')) {
-          b.click();
+  function fillSlot(slot, name, img, price) {
+    document.getElementById(`slot-${slot}-empty`).style.display = 'none';
+    document.getElementById(`slot-${slot}-filled`).style.display = 'flex';
+    document.getElementById(`slot-${slot}-img`).src = img;
+    document.getElementById(`slot-${slot}-img`).alt = name;
+    document.getElementById(`slot-${slot}-name`).textContent = name;
+    document.getElementById(`slot-${slot}-price`).textContent =
+      price && parseFloat(price) > 0 ? Number(price).toLocaleString('vi-VN') + ' ₫' : '';
+    document.getElementById(`slot-${slot}`).classList.add('filled');
+  }
+
+  function clearSlot(slot) {
+    if (sel[slot]) {
+      document.querySelectorAll(`.g-card[data-id="${sel[slot].id}"]`).forEach(c => {
+        c.classList.remove('active'); c.setAttribute('aria-pressed','false');
+      });
+      sel[slot] = null;
+    }
+    document.getElementById(`slot-${slot}-empty`).style.display = 'flex';
+    document.getElementById(`slot-${slot}-filled`).style.display = 'none';
+    document.getElementById(`slot-${slot}`).classList.remove('filled');
+  }
+
+  // ── upload ────────────────────────────────────────────────
+  function handleUpload(input) {
+    if (!input.files?.[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('personPreview');
+      prev.src = e.target.result; prev.style.display = 'block';
+      document.getElementById('uploadPrompt').style.display = 'none';
+      document.getElementById('changePhoto').style.display = 'block';
+      document.getElementById('uploadZone').classList.add('filled');
+    };
+    reader.readAsDataURL(file);
+
+    setStatus('Uploading…');
+    const csrf = document.querySelector('meta[name="_csrf"]')?.content;
+    const csrfH = document.querySelector('meta[name="_csrf_header"]')?.content;
+    const headers = csrf && csrfH ? { [csrfH]: csrf } : {};
+    const fd = new FormData();
+    fd.append('personImage', file);
+
+    fetch('/api/tryon/upload-person', { method: 'POST', body: fd, headers })
+      .then(r => r.json())
+      .then(d => {
+        if (d.personId) {
+          personId = d.personId;
+          setStatus('✓ Photo ready. Select garments and generate.');
+          window.novaTrack?.('studio_upload');
+        } else {
+          setStatus('Upload failed: ' + (d.error || 'Unknown'), true);
         }
-      });
+      })
+      .catch(e => setStatus('Upload error: ' + e.message, true));
+  }
+
+  // ── loading steps ─────────────────────────────────────────
+  function startSteps() {
+    ['s1','s2','s3','s4'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el) { el.className = 'step-row'; if (i === 0) el.classList.add('active'); }
+    });
+    let i = 1;
+    stepTimer = setInterval(() => {
+      const prev = document.getElementById('s' + i);
+      if (prev) { prev.classList.remove('active'); prev.classList.add('done'); }
+      i++;
+      const cur = document.getElementById('s' + i);
+      if (cur) cur.classList.add('active');
+      else clearInterval(stepTimer);
+    }, 22000);
+  }
+  function stopSteps() { if (stepTimer) { clearInterval(stepTimer); stepTimer = null; } }
+
+  // ── generate ──────────────────────────────────────────────
+  function generate() {
+    if (!personId) { setStatus('Please upload a full-body photo first.', true); return; }
+    const hasU = !!sel.upper, hasL = !!sel.lower;
+    if (!hasU && !hasL) { setStatus('Please select at least one garment.', true); return; }
+
+    const csrf = document.querySelector('meta[name="_csrf"]')?.content;
+    const csrfH = document.querySelector('meta[name="_csrf_header"]')?.content;
+    const headers = csrf && csrfH ? { [csrfH]: csrf } : {};
+
+    // Show loading col
+    document.getElementById('loadingArea').style.display   = 'flex';
+    document.getElementById('placeholder').style.display   = 'none';
+    document.getElementById('resultArea').style.display    = 'none';
+    document.getElementById('resultActions').style.display = 'none';
+    document.getElementById('genBtn').disabled = true;
+    document.getElementById('loadingNote').textContent =
+      (hasU && hasL) ? '60 – 180 seconds (outfit)' : '30 – 120 seconds';
+    setStatus('Generating preview…');
+    startSteps();
+    window.novaTrack?.('studio_generate_start', { upper: sel.upper?.id, lower: sel.lower?.id });
+
+    const fd = new FormData();
+    fd.append('personId', personId);
+    let endpoint;
+    if (hasU && hasL) {
+      fd.append('topProductId',    sel.upper.id);
+      fd.append('bottomProductId', sel.lower.id);
+      endpoint = '/api/tryon/generate-outfit';
+    } else {
+      fd.append('productId', (hasU ? sel.upper : sel.lower).id);
+      endpoint = '/api/tryon/generate';
     }
 
-    // ── Product selection ─────────────────────────────
-    function selectProduct(card) {
-      const id   = card.dataset.id;
-      const type = card.dataset.type;   // 'UPPER_BODY' or 'LOWER_BODY'
-      const name = card.dataset.name;
-      const img  = card.dataset.img;
-      const price = card.dataset.price;
+    fetch(endpoint, { method: 'POST', body: fd, headers })
+      .then(async r => {
+        stopSteps();
+        document.getElementById('loadingArea').style.display = 'none';
+        document.getElementById('genBtn').disabled = false;
 
-      // Route strictly by garment type — UPPER_BODY → top slot, LOWER_BODY → bottom slot.
-      // This prevents pants/shorts from being accidentally assigned to the top slot.
-      let slot;
-      if (type === 'UPPER_BODY') {
-        slot = 'upper';
-      } else if (type === 'LOWER_BODY') {
-        slot = 'lower';
-      } else {
-        // Unknown type — do nothing
-        return;
-      }
+        if (r.ok && r.headers.get('content-type')?.startsWith('image/')) {
+          const url = URL.createObjectURL(await r.blob());
 
-      // Deselect previous in this slot
-      if (selectedItems[slot]) {
-        document.querySelectorAll('.tryon-card').forEach(c => {
-          if (c.dataset.id === selectedItems[slot].id) {
-            c.classList.remove('selected');
-            c.setAttribute('aria-pressed', 'false');
-          }
-        });
-      }
+          // desktop
+          const img = document.getElementById('resultImg');
+          if (img._prev) URL.revokeObjectURL(img._prev);
+          img._prev = url; img.src = url;
+          document.getElementById('dlBtn').href = url;
+          document.getElementById('resultArea').style.display   = 'flex';
+          document.getElementById('resultActions').style.display = 'flex';
+          document.getElementById('resultArea').classList.add('reveal');
 
-      // Select new
-      selectedItems[slot] = { id, name, img, price };
 
-      // Highlight card across all panels
-      document.querySelectorAll('.tryon-card').forEach(c => {
-        if (c.dataset.id === id) {
-          c.classList.add('selected');
-          c.setAttribute('aria-pressed', 'true');
+          setStatus('Preview ready.');
+          window.novaTrack?.('studio_generate_success');
+        } else {
+          document.getElementById('placeholder').style.display = 'flex';
+          const d = await r.json().catch(() => ({}));
+          setStatus('Error: ' + (d.error || 'Generation failed.'), true);
+          window.novaTrack?.('studio_generate_error');
         }
+      })
+      .catch(e => {
+        stopSteps();
+        document.getElementById('loadingArea').style.display   = 'none';
+        document.getElementById('placeholder').style.display   = 'flex';
+        document.getElementById('genBtn').disabled = false;
+        setStatus('Connection error: ' + e.message, true);
       });
-      setStudioStatus(`${name} selected.`);
-      window.novaTrack?.('studio_item_selected', { productId: id, slot });
-
-      // Update slot UI
-      updateSlot(slot, name, img, price);
-    }
-
-    function updateSlot(slot, name, img, price) {
-      document.getElementById('slot-' + slot + '-empty').style.display = 'none';
-      const filled = document.getElementById('slot-' + slot + '-filled');
-      filled.style.display = 'flex';
-      document.getElementById('slot-' + slot + '-img').src = img;
-      document.getElementById('slot-' + slot + '-img').alt = name;
-      document.getElementById('slot-' + slot + '-name').textContent = name;
-      document.getElementById('slot-' + slot + '-price').textContent =
-        price && parseFloat(price) > 0 ? Number(price).toLocaleString('vi-VN') + ' ₫' : '—';
-      document.getElementById('slot-' + slot).classList.add('filled');
-    }
-
-    function clearSlot(slot) {
-      if (selectedItems[slot]) {
-        const id = selectedItems[slot].id;
-        document.querySelectorAll('.tryon-card').forEach(c => {
-          if (c.dataset.id === id) {
-            c.classList.remove('selected');
-            c.setAttribute('aria-pressed', 'false');
-          }
-        });
-        selectedItems[slot] = null;
-      }
-      document.getElementById('slot-' + slot + '-empty').style.display = 'block';
-      document.getElementById('slot-' + slot + '-filled').style.display = 'none';
-      document.getElementById('slot-' + slot).classList.remove('filled');
-    }
-
-    // ── Person upload ─────────────────────────────────
-    function handleStudioUpload(input) {
-      if (!input.files || !input.files[0]) return;
-      const file = input.files[0];
-
-      // Preview
-      const reader = new FileReader();
-      reader.onload = e => {
-        const preview = document.getElementById('studioPersonPreview');
-        preview.src = e.target.result;
-        preview.style.display = 'block';
-        document.getElementById('studioUploadPrompt').style.display = 'none';
-        document.getElementById('studioChangePhoto').style.display = 'block';
-        document.getElementById('studioUploadZone').classList.add('has-image');
-      };
-      reader.readAsDataURL(file);
-
-      // Upload
-      const csrf = document.querySelector('meta[name="_csrf"]')?.content;
-      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-
-      const formData = new FormData();
-      formData.append('personImage', file);
-
-      const headers = {};
-      if (csrf && csrfHeader) headers[csrfHeader] = csrf;
-
-      fetch('/api/tryon/upload-person', { method: 'POST', body: formData, headers })
-        .then(r => r.json())
-        .then(data => {
-          if (data.personId) {
-            studioPersonId = data.personId;
-            setStudioStatus('Photo uploaded. Select an item and generate a preview.');
-            window.novaTrack?.('studio_photo_uploaded');
-          } else {
-            setStudioStatus('Upload failed: ' + (data.error || 'Unknown error'), true);
-          }
-        })
-        .catch(err => setStudioStatus('Upload error: ' + err.message, true));
-    }
-
-    // ── Generate try-on ───────────────────────────────
-    function generateStudioTryOn() {
-      if (!studioPersonId) {
-        setStudioStatus('Please upload a full-body photo first.', true);
-        return;
-      }
-
-      const hasUpper = !!selectedItems.upper;
-      const hasLower = !!selectedItems.lower;
-
-      if (!hasUpper && !hasLower) {
-        setStudioStatus('Please select at least one item to try on.', true);
-        return;
-      }
-
-      const csrf       = document.querySelector('meta[name="_csrf"]')?.content;
-      const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
-      const headers    = {};
-      if (csrf && csrfHeader) headers[csrfHeader] = csrf;
-
-      // Show loading
-      document.getElementById('studioLoading').style.display = 'block';
-      document.getElementById('studioResult').style.display  = 'none';
-      document.getElementById('studioGenerateBtn').disabled  = true;
-      document.getElementById('studioGenerateBtn').style.opacity = '0.4';
-      setStudioStatus('Generating your preview. This can take a minute.');
-      window.novaTrack?.('studio_tryon_generate_start', {
-        upperProductId: selectedItems.upper?.id || null,
-        lowerProductId: selectedItems.lower?.id || null
-      });
-
-      const formData = new FormData();
-      formData.append('personId', studioPersonId);
-
-      let endpoint;
-
-      if (hasUpper && hasLower) {
-        // Full outfit: top + bottom composited via CatVTON
-        formData.append('topProductId',    selectedItems.upper.id);
-        formData.append('bottomProductId', selectedItems.lower.id);
-        endpoint = '/api/tryon/generate-outfit';
-        document.querySelector('#studioLoading p').textContent =
-          'CatVTON outfit (upper + lower)… 60–180 seconds';
-      } else {
-        // Single garment
-        const singleId = hasUpper ? selectedItems.upper.id : selectedItems.lower.id;
-        formData.append('productId', singleId);
-        endpoint = '/api/tryon/generate';
-        document.querySelector('#studioLoading p').textContent =
-          'CatVTON processing… 30–120 seconds';
-      }
-
-      fetch(endpoint, { method: 'POST', body: formData, headers })
-        .then(async r => {
-          document.getElementById('studioLoading').style.display = 'none';
-          document.getElementById('studioGenerateBtn').disabled  = false;
-          document.getElementById('studioGenerateBtn').style.opacity = '1';
-
-          if (r.ok && r.headers.get('content-type')?.startsWith('image/')) {
-            const blob = await r.blob();
-            const url  = URL.createObjectURL(blob);
-            const img  = document.getElementById('studioResultImg');
-            if (img._prevObjectUrl) URL.revokeObjectURL(img._prevObjectUrl);
-            img._prevObjectUrl = url;
-            img.src = url;
-            const btn = document.getElementById('studioDownloadBtn');
-            if (btn) btn.href = url;
-            document.getElementById('studioResult').style.display = 'block';
-            setStudioStatus('Preview generated.');
-            window.novaTrack?.('studio_tryon_generate_success');
-          } else {
-            const data = await r.json().catch(() => ({}));
-            setStudioStatus('Error: ' + (data.error || 'Try-on generation failed'), true);
-            window.novaTrack?.('studio_tryon_generate_error');
-          }
-        })
-        .catch(err => {
-          document.getElementById('studioLoading').style.display = 'none';
-          document.getElementById('studioGenerateBtn').disabled = false;
-          document.getElementById('studioGenerateBtn').style.opacity = '1';
-          setStudioStatus('Connection error: ' + err.message, true);
-          window.novaTrack?.('studio_tryon_generate_error', { reason: 'connection' });
-        });
-    }
-  </script>
+  }
+</script>
 </div>
 </html>

@@ -55,10 +55,8 @@ public class SecurityConfig {
                 .securityMatcher("/api/**")
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
-                // IF_REQUIRED allows session for cart (session-based), while JWT auth
-                // remains stateless — JWT filter handles auth independently of session
                 .sessionManagement(session
-                        -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                        -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                         "/api/auth/login",

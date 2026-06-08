@@ -32,7 +32,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _loadSaved() async {
     final token = await _api.getToken();
-    if (token != null) state = state.copyWith(token: token);
+    if (token != null && ApiClient.isTokenValid(token)) {
+      state = state.copyWith(token: token);
+    } else if (token != null) {
+      // Token expired — clear it so UI shows login screen
+      await _api.clearToken();
+    }
   }
 
   Future<bool> login(String email, String password) async {

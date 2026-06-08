@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.shop.clothingstore.entity.Notification;
+import com.shop.clothingstore.dto.api.NotificationResponse;
 import com.shop.clothingstore.entity.User;
 import com.shop.clothingstore.repository.UserRepository;
 import com.shop.clothingstore.service.NotificationService;
@@ -42,12 +42,16 @@ public class NotificationApiController {
 
     /** Recent 20 notifications for the dropdown panel. */
     @GetMapping
-    public ResponseEntity<List<Notification>> list(
+    public ResponseEntity<List<NotificationResponse>> list(
             @AuthenticationPrincipal UserDetails principal) {
 
         User user = resolveUser(principal);
         if (user == null) return ResponseEntity.ok(List.of());
-        return ResponseEntity.ok(notificationService.getRecent(user, 20));
+        return ResponseEntity.ok(
+                notificationService.getRecent(user, 20).stream()
+                        .map(NotificationResponse::from)
+                        .toList()
+        );
     }
 
     /** Mark a single notification as read. */

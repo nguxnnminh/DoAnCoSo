@@ -18,10 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.shop.clothingstore.dto.ProductFilterDTO;
 import com.shop.clothingstore.dto.api.ProductResponse;
+import com.shop.clothingstore.dto.api.ReviewResponse;
 import com.shop.clothingstore.entity.Product;
 import com.shop.clothingstore.exception.ResourceNotFoundException;
 import com.shop.clothingstore.service.ProductService;
 import com.shop.clothingstore.service.RecommendationService;
+import com.shop.clothingstore.service.ReviewService;
 
 @RestController
 @RequestMapping("/api/products")
@@ -29,11 +31,14 @@ public class ProductApiController {
 
     private final ProductService productService;
     private final RecommendationService recommendationService;
+    private final ReviewService reviewService;
 
     public ProductApiController(ProductService productService,
-            RecommendationService recommendationService) {
+            RecommendationService recommendationService,
+            ReviewService reviewService) {
         this.productService = productService;
         this.recommendationService = recommendationService;
+        this.reviewService = reviewService;
     }
 
     // GET /api/products
@@ -95,6 +100,17 @@ public class ProductApiController {
         Product product = productService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
         return ResponseEntity.ok(ProductResponse.from(product));
+    }
+
+    // GET /api/products/{id}/reviews
+    @GetMapping("/{id}/reviews")
+    public ResponseEntity<Map<String, Object>> getReviews(@PathVariable Long id) {
+        double avg = reviewService.getAverageRating(id);
+        long count = reviewService.getReviewCount(id);
+        List<ReviewResponse> reviews = reviewService.getReviewsByItem(id).stream()
+                .map(ReviewResponse::from)
+                .toList();
+        return ResponseEntity.ok(Map.of("average", avg, "count", count, "reviews", reviews));
     }
 
     // GET /api/products/{id}/similar

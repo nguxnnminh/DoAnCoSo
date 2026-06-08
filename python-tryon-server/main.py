@@ -38,6 +38,10 @@ if _env_file.exists():
             _k, _v = _line.split("=", 1)
             os.environ.setdefault(_k.strip(), _v.strip())
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="xformers")
+warnings.filterwarnings("ignore", category=UserWarning, module="transformers")
+
 import httpx
 import replicate
 from replicate.exceptions import ReplicateError
@@ -55,13 +59,14 @@ REPLICATE_MODEL = "cuuupid/idm-vton:906425dbca90663ff5427624839572cc56ea7d380343
 INFER_W, INFER_H = 768, 1024
 
 # Diffusion steps. CatVTON is an inpaint-concat model → converges fast.
-# With UniPC/DPM++ scheduler, 16-20 steps ≈ DDIM-25 quality. ~2.3s/step on a 3050Ti.
-NUM_STEPS = int(os.getenv("TRYON_STEPS", "20"))
+# UniPC/DPM++ reaches DDIM-25 quality in 16 steps (~2s/step on 3050Ti → ~32s/pass).
+NUM_STEPS = int(os.getenv("TRYON_STEPS", "16"))
 GUIDANCE = float(os.getenv("TRYON_CFG", "2.5"))
 # Scheduler: 'ddim' (CatVTON default, safe) | 'unipc' | 'dpm' (both converge faster at low steps)
 SCHEDULER = os.getenv("TRYON_SCHEDULER", "unipc").lower()
-# Human-parser device: 'cpu' keeps all 4GB VRAM for diffusion (parse is one-time ~3s).
-PARSER_DEVICE = os.getenv("TRYON_PARSER_DEVICE", "cpu")
+# Parser on cuda → avoids CPU-GPU tensor transfer on every parse call.
+# The 3050Ti has enough VRAM (4GB fp16) even with parser loaded alongside diffusion.
+PARSER_DEVICE = os.getenv("TRYON_PARSER_DEVICE", "cuda")
 PARSER_MODEL = os.getenv("TRYON_PARSER_MODEL", "mattmdjaga/segformer_b2_clothes")
 
 _use_local_fallback = False
@@ -69,6 +74,7 @@ _catvton_pipe = None
 _parser = None          # (image_processor, model) for SegFormer human parsing
 _parser_failed = False
 _executor = ThreadPoolExecutor(max_workers=1)
+_cuda_generator = None  # reused across calls — avoids re-allocating CUDA state each inference
 
 
 # ── CatVTON local ─────────────────────────────────────────────────────────────
@@ -101,6 +107,7 @@ def _load_catvton():
         attn_ckpt_version="mix",
         weight_dtype=torch.float16,
         device="cuda",
+        compile=False,   # torch.compile requires Triton — not available on Windows
         skip_safety_check=True,
         use_tf32=True,
     )
@@ -110,6 +117,26 @@ def _load_catvton():
         pipe.vae.enable_tiling()
     except Exception as e:
         log.warning("VAE slicing/tiling unavailable: %s", e)
+
+    # xformers memory-efficient attention for self-attention (attn1) only.
+    # CatVTON uses SkipAttnProcessor on all attn2 (cross-attention) to nullify text
+    # conditioning. enable_xformers_memory_efficient_attention() would overwrite those
+    # processors and cause a shape mismatch (49152x320 vs 768x320). So we call it and
+    # immediately restore SkipAttnProcessor on every attn2 processor.
+    try:
+        from model.attn_processor import SkipAttnProcessor
+        pipe.unet.enable_xformers_memory_efficient_attention()
+        # Restore SkipAttnProcessor for all cross-attention layers that xformers just clobbered
+        attn_procs = {}
+        for name, proc in pipe.unet.attn_processors.items():
+            if name.endswith("attn2.processor"):
+                attn_procs[name] = SkipAttnProcessor()
+            else:
+                attn_procs[name] = proc
+        pipe.unet.set_attn_processor(attn_procs)
+        log.info("xformers memory-efficient attention enabled (self-attn only)")
+    except Exception as e:
+        log.warning("xformers unavailable (%s) — using default attention", e)
 
     # Faster scheduler: UniPC/DPM++ reach DDIM-25 quality in ~16-20 steps (drop-in,
     # same step() API the CatVTON pipeline uses).
@@ -146,7 +173,7 @@ ATR = {
 # Regions to REPAINT (the garment footprint) per try-on category
 MASK_PARTS = {
     "upper_body": ["Upper-clothes", "Dress", "Belt"],
-    "lower_body": ["Pants", "Skirt", "Dress", "Left-leg", "Right-leg"],
+    "lower_body": ["Pants", "Skirt"],
     "dresses":    ["Upper-clothes", "Dress", "Skirt", "Pants", "Belt", "Left-leg", "Right-leg"],
 }
 # Regions to FORCE-KEEP (never paint over) per category
@@ -154,7 +181,7 @@ PROTECT_PARTS = {
     "upper_body": ["Face", "Hair", "Hat", "Sunglasses", "Pants", "Skirt",
                    "Left-leg", "Right-leg", "Left-shoe", "Right-shoe", "Bag"],
     "lower_body": ["Face", "Hair", "Hat", "Sunglasses", "Upper-clothes",
-                   "Left-arm", "Right-arm", "Left-shoe", "Right-shoe", "Bag", "Scarf"],
+                   "Left-arm", "Right-arm", "Left-leg", "Right-leg", "Left-shoe", "Right-shoe", "Bag", "Scarf"],
     "dresses":    ["Face", "Hair", "Hat", "Sunglasses", "Left-shoe", "Right-shoe", "Bag"],
 }
 
@@ -270,6 +297,18 @@ def _build_mask(person_proc: Image.Image, category: str) -> Image.Image:
     return _rect_mask(person_proc.width, person_proc.height, category)
 
 
+def _build_both_masks(person_proc: Image.Image):
+    """Parse person once, return (upper_mask, lower_mask). Avoids double inference."""
+    try:
+        parse = _human_parse(person_proc)
+        if parse is not None:
+            return _agnostic_mask(parse, "upper_body"), _agnostic_mask(parse, "lower_body")
+    except Exception as e:
+        log.warning("Dual mask build failed (%s) — using rectangles", e)
+    w, h = person_proc.width, person_proc.height
+    return _rect_mask(w, h, "upper_body"), _rect_mask(w, h, "lower_body")
+
+
 def _catvton_infer(
     person_img: Image.Image,
     garment_img: Image.Image,
@@ -280,6 +319,7 @@ def _catvton_infer(
 ):
     """Run one CatVTON pass. Returns (result_img, person_proc, mask).
     person_proc/mask may be passed in to reuse across an outfit's two passes."""
+    global _cuda_generator
     import torch
     import sys
     if CATVTON_SRC not in sys.path:
@@ -292,16 +332,21 @@ def _catvton_infer(
     if mask is None:
         mask = _build_mask(person_proc, category)
 
-    result = pipe(
-        image=person_proc,
-        condition_image=garment_img.convert("RGB"),  # pipe pads to ratio internally
-        mask=mask,
-        num_inference_steps=num_steps,
-        guidance_scale=GUIDANCE,
-        height=INFER_H,
-        width=INFER_W,
-        generator=torch.Generator(device="cuda").manual_seed(42),
-    )
+    if _cuda_generator is None:
+        _cuda_generator = torch.Generator(device="cuda").manual_seed(42)
+
+    # inference_mode is a stricter no_grad — slightly faster and uses less memory
+    with torch.inference_mode():
+        result = pipe(
+            image=person_proc,
+            condition_image=garment_img.convert("RGB"),
+            mask=mask,
+            num_inference_steps=num_steps,
+            guidance_scale=GUIDANCE,
+            height=INFER_H,
+            width=INFER_W,
+            generator=_cuda_generator,
+        )
     out = result[0] if isinstance(result, list) else result
     return out, person_proc, mask
 
@@ -346,20 +391,22 @@ def _local_outfit_sync(
     bottom_img = Image.open(io.BytesIO(bottom_bytes)).convert("RGB")
 
     person_proc = resize_and_crop(person_img, (INFER_W, INFER_H))
-    # Parse once, derive both non-overlapping masks (upper protects legs, lower protects arms)
+    # Parse person ONCE, derive both non-overlapping masks in a single forward pass
     t0 = time.time()
-    upper_mask = _build_mask(person_proc, "upper_body")
-    lower_mask = _build_mask(person_proc, "lower_body")
+    upper_mask, lower_mask = _build_both_masks(person_proc)
     log.info("Outfit masks ready in %.1fs", time.time() - t0)
 
+    import torch
     t1 = time.time()
     res_up, _, _ = _catvton_infer(person_img, top_img, "upper_body",
                                   person_proc=person_proc, mask=upper_mask)
     log.info("CatVTON upper done in %.1fs", time.time() - t1)
+    torch.cuda.empty_cache()   # free fragmented VRAM before second pass
     t2 = time.time()
     res_lo, _, _ = _catvton_infer(person_img, bottom_img, "lower_body",
                                   person_proc=person_proc, mask=lower_mask)
     log.info("CatVTON lower done in %.1fs", time.time() - t2)
+    torch.cuda.empty_cache()
 
     # Composite: take only each garment region (feathered) onto the original person
     final = person_proc.copy()
@@ -476,13 +523,35 @@ async def run_tryon(person_bytes, garment_bytes, category="upper_body", descript
 
 
 # ── FastAPI ───────────────────────────────────────────────────────────────────
+def _warmup_cuda():
+    """Run a 1-step pass at full inference resolution so CUDA kernels are
+    compiled and cached before the first real request. Takes ~5-8s but saves
+    ~20s on the first real request (no cold-start kernel compilation)."""
+    try:
+        import torch
+        pipe = _load_catvton()
+        dummy = Image.new("RGB", (INFER_W, INFER_H), (128, 128, 128))
+        mask  = Image.new("L",   (INFER_W, INFER_H), 128)
+        with torch.inference_mode():
+            pipe(image=dummy, condition_image=dummy, mask=mask,
+                 num_inference_steps=1, guidance_scale=GUIDANCE,
+                 height=INFER_H, width=INFER_W)
+        import gc; gc.collect()
+        torch.cuda.empty_cache()
+        log.info("CUDA warm-up complete")
+    except Exception as e:
+        log.warning("CUDA warm-up failed (%s) — first request will be slower", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Try-On server starting on port 8081")
     log.info("Replicate token: %s", "SET" if REPLICATE_API_TOKEN else "NOT SET - local only")
-    if not REPLICATE_API_TOKEN:
-        _executor.submit(_load_catvton)
-        _executor.submit(_load_parser)
+    # Always pre-load local model on GPU if available — Replicate may fail/exhaust
+    # quota at runtime and fall back to local, so we warm up regardless of token.
+    _executor.submit(_load_parser)
+    _executor.submit(_load_catvton)
+    _executor.submit(_warmup_cuda)
     yield
     _executor.shutdown(wait=False)
 

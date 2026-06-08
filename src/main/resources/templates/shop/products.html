@@ -660,7 +660,7 @@
           open(); return;
         }
         dd.innerHTML = items.map((p, i) => {
-          const img = p.imageUrl || '/images/no-image.png';
+          const img = (p.images && p.images.length > 0 ? p.images[0].imageUrl : null) || '/images/no-image.png';
           const price = (p.minPrice != null) ? Number(p.minPrice).toLocaleString('vi-VN') + ' ₫' : '';
           return `<a class="ac-item" role="option" data-i="${i}" href="/product/${encodeURIComponent(p.slug)}">
                     <img src="${escapeHtml(img)}" alt="" />

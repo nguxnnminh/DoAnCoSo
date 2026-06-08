@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../models/product.dart';
+import '../../../models/review.dart';
 
 final productDetailProvider = FutureProvider.family<Product, int>((ref, id) async {
   final dio = ref.read(apiClientProvider).dio;
@@ -12,6 +13,12 @@ final similarProductsProvider = FutureProvider.family<List<Product>, int>((ref, 
   final dio = ref.read(apiClientProvider).dio;
   final res = await dio.get('/api/products/$id/similar', queryParameters: {'limit': 6});
   return (res.data as List).map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+});
+
+final productReviewsProvider = FutureProvider.family<ProductReviews, int>((ref, id) async {
+  final dio = ref.read(apiClientProvider).dio;
+  final res = await dio.get('/api/products/$id/reviews');
+  return ProductReviews.fromJson(res.data as Map<String, dynamic>);
 });
 
 final searchSuggestProvider = FutureProvider.family<List<Product>, String>((ref, q) async {

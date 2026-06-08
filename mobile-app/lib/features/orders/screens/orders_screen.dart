@@ -42,7 +42,7 @@ class OrdersScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(20),
                   itemCount: orders.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _OrderCard(order: orders[i], onTap: () => context.go('/orders/${orders[i].id}')),
+                  itemBuilder: (_, i) => _OrderCard(order: orders[i], onTap: () => context.push('/orders/${orders[i].id}')),
                 ),
               ),
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.textMuted, strokeWidth: 2)),

@@ -146,7 +146,7 @@ class _CartBody extends StatelessWidget {
               const SizedBox(height: 16),
               NovaPrimaryButton(
                 label: 'Checkout — ${cart.itemCount} item${cart.itemCount > 1 ? 's' : ''}',
-                onPressed: () => context.go('/checkout'),
+                onPressed: () => context.push('/checkout'),
                 height: 52,
               ),
               const SizedBox(height: 10),

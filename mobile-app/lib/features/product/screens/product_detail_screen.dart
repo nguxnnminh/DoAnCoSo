@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/format.dart';
 import '../../../core/utils/image_url_helper.dart';
 import '../../../models/product.dart';
+import '../../../models/review.dart';
 import '../../../shared/widgets/nova_button.dart';
 import '../../../shared/widgets/product_card.dart';
 import '../../../shared/widgets/shimmer_box.dart';
@@ -361,9 +362,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
         ),
 
+        // Reviews section
+        SliverToBoxAdapter(
+          child: _ReviewSection(productId: product.id),
+        ),
+
         const SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: Text('You May Also Like', style: TextStyle(fontFamily: 'BebasNeue', fontSize: 26, letterSpacing: 0.08, color: AppColors.textPrimary)),
           ),
         ),
@@ -409,6 +415,168 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReviewSection extends ConsumerWidget {
+  final int productId;
+  const _ReviewSection({required this.productId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviewsAsync = ref.watch(productReviewsProvider(productId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(color: AppColors.borderDark),
+          const SizedBox(height: 20),
+          reviewsAsync.when(
+            data: (data) => _ReviewContent(data: data),
+            loading: () => Column(children: [
+              const ShimmerBox(height: 24, width: 120),
+              const SizedBox(height: 16),
+              const ShimmerBox(height: 80),
+              const SizedBox(height: 12),
+              const ShimmerBox(height: 80),
+            ]),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewContent extends StatefulWidget {
+  final ProductReviews data;
+  const _ReviewContent({required this.data});
+
+  @override
+  State<_ReviewContent> createState() => _ReviewContentState();
+}
+
+class _ReviewContentState extends State<_ReviewContent> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.data;
+    if (data.count == 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Reviews', style: TextStyle(fontFamily: 'BebasNeue', fontSize: 26, letterSpacing: 0.08, color: AppColors.textPrimary)),
+          const SizedBox(height: 12),
+          Text('No reviews yet', style: TextStyle(fontFamily: 'DMSans', fontSize: 13, color: AppColors.textDim)),
+        ],
+      );
+    }
+
+    final shown = _expanded ? data.reviews : data.reviews.take(2).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          const Text('Reviews', style: TextStyle(fontFamily: 'BebasNeue', fontSize: 26, letterSpacing: 0.08, color: AppColors.textPrimary)),
+          const SizedBox(width: 10),
+          // Star + average
+          Icon(Icons.star, size: 13, color: AppColors.accent),
+          const SizedBox(width: 3),
+          Text(data.average.toStringAsFixed(1),
+              style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+          const SizedBox(width: 4),
+          Text('(${data.count})',
+              style: const TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textDim)),
+        ]),
+        const SizedBox(height: 16),
+        ...shown.map((r) => _ReviewCard(review: r)),
+        if (data.reviews.length > 2)
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(children: [
+                Text(_expanded ? 'Show less' : 'Show all ${data.count} reviews',
+                    style: const TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textMuted, decoration: TextDecoration.underline, decorationColor: AppColors.textMuted)),
+                const SizedBox(width: 4),
+                Icon(_expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 14, color: AppColors.textMuted),
+              ]),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  final Review review;
+  const _ReviewCard({required this.review});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundDark,
+        border: Border.all(color: AppColors.borderDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            // Avatar chữ cái đầu
+            Container(
+              width: 28, height: 28,
+              color: AppColors.surface2,
+              alignment: Alignment.center,
+              child: Text(
+                review.authorName.isNotEmpty ? review.authorName[0].toUpperCase() : '?',
+                style: const TextStyle(fontFamily: 'BebasNeue', fontSize: 14, color: AppColors.textMuted),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(review.authorName,
+                  style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
+            ),
+            // Stars
+            Row(
+              children: List.generate(5, (i) => Icon(
+                i < review.rating.round() ? Icons.star : Icons.star_border,
+                size: 12,
+                color: AppColors.accent,
+              )),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Text(review.comment,
+              style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.textMuted, height: 1.6)),
+          // Ảnh đính kèm (nếu có)
+          if (review.imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: review.imageUrls.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (_, i) => CachedNetworkImage(
+                  imageUrl: resolveImageUrl(review.imageUrls[i]),
+                  width: 64, height: 64, fit: BoxFit.cover,
+                  placeholder: (_, _) => Container(color: AppColors.surface),
+                  errorWidget: (_, _, _) => Container(color: AppColors.surface),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/format.dart';
@@ -271,6 +274,10 @@ class _ReviewRowState extends State<_ReviewRow> {
   bool _submitting = false;
   int _rating = 5;
   final _commentCtrl = TextEditingController();
+  final List<XFile> _images = [];
+  final _picker = ImagePicker();
+
+  static const int _maxImages = 5;
 
   @override
   void dispose() {
@@ -278,17 +285,32 @@ class _ReviewRowState extends State<_ReviewRow> {
     super.dispose();
   }
 
+  Future<void> _pickImages() async {
+    final remaining = _maxImages - _images.length;
+    if (remaining <= 0) return;
+    final picked = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    if (picked.isNotEmpty && mounted) {
+      setState(() => _images.addAll(picked));
+    }
+  }
+
+  void _removeImage(int index) => setState(() => _images.removeAt(index));
+
   Future<void> _submit(ApiClient api) async {
     if (_rating == 0) return;
     final itemId = widget.item.id;
     if (itemId == null) return;
     setState(() => _submitting = true);
     try {
-      // Khớp web: review keyed theo orderItemId (ReviewService.createReview).
-      await api.dio.post('/api/reviews/$itemId', data: {
-        'rating': _rating,
+      final formData = FormData.fromMap({
+        'rating': _rating.toString(),
         'comment': _commentCtrl.text.trim(),
+        if (_images.isNotEmpty)
+          'images': await Future.wait(
+            _images.map((f) async => await MultipartFile.fromFile(f.path, filename: f.name)),
+          ),
       });
+      await api.dio.post('/api/reviews/$itemId', data: formData);
       if (mounted) setState(() { _submitting = false; _submitted = true; _showForm = false; });
     } on DioException {
       if (mounted) setState(() => _submitting = false);
@@ -311,7 +333,8 @@ class _ReviewRowState extends State<_ReviewRow> {
             Row(children: [
               const Icon(Icons.check_circle_outline, size: 16, color: AppColors.success),
               const SizedBox(width: 6),
-              Text(_submitted ? 'Review submitted!' : 'You reviewed this item', style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.success)),
+              Text(_submitted ? 'Review submitted!' : 'You reviewed this item',
+                  style: const TextStyle(fontFamily: 'DMSans', fontSize: 12, color: AppColors.success)),
             ]),
           ] else if (!_showForm) ...[
             GestureDetector(
@@ -329,11 +352,13 @@ class _ReviewRowState extends State<_ReviewRow> {
                 onTap: () => setState(() => _rating = i + 1),
                 child: Padding(
                   padding: const EdgeInsets.only(right: 4),
-                  child: Icon(i < _rating ? Icons.star_rounded : Icons.star_outline_rounded, size: 28, color: AppColors.accent),
+                  child: Icon(i < _rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: 28, color: AppColors.accent),
                 ),
               )),
             ),
             const SizedBox(height: 12),
+            // Comment
             TextField(
               controller: _commentCtrl,
               maxLines: 3,
@@ -347,17 +372,97 @@ class _ReviewRowState extends State<_ReviewRow> {
                 contentPadding: EdgeInsets.all(12),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            // Image attach row
             Row(children: [
-              Expanded(child: NovaOutlineButton(label: 'Cancel', onPressed: () => setState(() => _showForm = false), height: 40)),
+              const Text('PHOTOS', style: TextStyle(fontFamily: 'DMSans', fontSize: 9, letterSpacing: 0.3, color: AppColors.textMuted2, fontWeight: FontWeight.w500)),
+              const SizedBox(width: 6),
+              Text('(${_images.length}/$_maxImages)', style: const TextStyle(fontFamily: 'DMSans', fontSize: 9, color: AppColors.textDim)),
+            ]),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 72,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  // Thumbnails đã chọn
+                  ..._images.asMap().entries.map((e) => _ImageThumb(
+                    file: File(e.value.path),
+                    onRemove: () => _removeImage(e.key),
+                  )),
+                  // Nút thêm ảnh
+                  if (_images.length < _maxImages)
+                    GestureDetector(
+                      onTap: _pickImages,
+                      child: Container(
+                        width: 72, height: 72,
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                          color: AppColors.surface,
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined, size: 22, color: AppColors.textDim),
+                            SizedBox(height: 3),
+                            Text('Add', style: TextStyle(fontFamily: 'DMSans', fontSize: 9, color: AppColors.textDim)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: NovaOutlineButton(
+                label: 'Cancel',
+                onPressed: () => setState(() { _showForm = false; _images.clear(); }),
+                height: 40,
+              )),
               const SizedBox(width: 10),
-              Expanded(child: Consumer(builder: (ctx, ref, _) => NovaPrimaryButton(label: 'Submit', loading: _submitting, onPressed: () => _submit(ref.read(apiClientProvider)), height: 40))),
+              Expanded(child: Consumer(builder: (ctx, ref, _) => NovaPrimaryButton(
+                label: 'Submit',
+                loading: _submitting,
+                onPressed: () => _submit(ref.read(apiClientProvider)),
+                height: 40,
+              ))),
             ]),
           ],
         ],
       ),
     );
   }
+}
+
+class _ImageThumb extends StatelessWidget {
+  final File file;
+  final VoidCallback onRemove;
+  const _ImageThumb({required this.file, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          Container(
+            width: 72, height: 72,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(border: Border.all(color: AppColors.borderDark)),
+            child: Image.file(file, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: 2, right: 8,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 18, height: 18,
+                decoration: const BoxDecoration(color: AppColors.background, shape: BoxShape.circle),
+                child: const Icon(Icons.close, size: 12, color: AppColors.textMuted),
+              ),
+            ),
+          ),
+        ],
+      );
 }
 
 class _Row extends StatelessWidget {
