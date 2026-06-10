@@ -19,6 +19,10 @@ class ApiClient {
   late final CookieJar _cookieJar;
   final _storage = const FlutterSecureStorage();
 
+  // In-memory copy of the token, updated synchronously on save/clear so that
+  // requests fired immediately after login don't race the async storage write.
+  String? _token;
+
   ApiClient() {
     _cookieJar = CookieJar();
     _dio = Dio(BaseOptions(
@@ -29,16 +33,25 @@ class ApiClient {
     ));
     _dio.interceptors.addAll([
       CookieManager(_cookieJar),
-      _AuthInterceptor(_storage),
-      LogInterceptor(requestBody: true, responseBody: true, logPrint: (o) {}),
+      _AuthInterceptor(this),
+      LogInterceptor(requestBody: true, responseBody: true, logPrint: (o) => print(o)),
     ]);
   }
 
   Dio get dio => _dio;
 
-  Future<String?> getToken() => _storage.read(key: kTokenKey);
-  Future<void> saveToken(String token) => _storage.write(key: kTokenKey, value: token);
-  Future<void> clearToken() => _storage.delete(key: kTokenKey);
+  /// Current token: in-memory value if set, else falls back to storage.
+  Future<String?> getToken() async => _token ??= await _storage.read(key: kTokenKey);
+
+  Future<void> saveToken(String token) async {
+    _token = token;
+    await _storage.write(key: kTokenKey, value: token);
+  }
+
+  Future<void> clearToken() async {
+    _token = null;
+    await _storage.delete(key: kTokenKey);
+  }
 
   /// Returns true if [token] is a valid, non-expired JWT.
   static bool isTokenValid(String token) {
@@ -60,18 +73,18 @@ class ApiClient {
 }
 
 class _AuthInterceptor extends Interceptor {
-  final FlutterSecureStorage _storage;
-  _AuthInterceptor(this._storage);
+  final ApiClient _client;
+  _AuthInterceptor(this._client);
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    final token = await _storage.read(key: kTokenKey);
+    final token = await _client.getToken();
     if (token != null) {
       if (ApiClient.isTokenValid(token)) {
         options.headers['Authorization'] = 'Bearer $token';
       } else {
         // Token expired — clear it so app shows login state
-        await _storage.delete(key: kTokenKey);
+        await _client.clearToken();
       }
     }
     handler.next(options);
@@ -80,7 +93,7 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode == 401) {
-      await _storage.delete(key: kTokenKey);
+      await _client.clearToken();
     }
     handler.next(err);
   }

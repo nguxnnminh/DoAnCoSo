@@ -29,6 +29,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   int _qty = 1;
   bool _addingToCart = false;
   bool _descExpanded = false;
+  bool _detailsExpanded = false;
+  bool _shippingExpanded = false;
 
   ProductVariant? _getVariant(Product p) {
     if (_selectedSize == null && _selectedColor == null) return null;
@@ -230,7 +232,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 // Size
                 if (sizes.isNotEmpty) ...[
                   Row(children: [
-                    const Text('SIZE', style: TextStyle(fontFamily: 'DMSans', fontSize: 9, letterSpacing: 0.4, color: AppColors.textMuted2, fontWeight: FontWeight.w500)),
+                    Text('SIZE${_selectedSize != null ? " : ${_selectedSize!.toUpperCase()}" : ""}', style: const TextStyle(fontFamily: 'DMSans', fontSize: 9, letterSpacing: 0.4, color: AppColors.textMuted2, fontWeight: FontWeight.w500)),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => _showSizeGuide(ctx),
@@ -268,7 +270,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                 // Color
                 if (colors.isNotEmpty) ...[
-                  const Text('COLOR', style: TextStyle(fontFamily: 'DMSans', fontSize: 9, letterSpacing: 0.4, color: AppColors.textMuted2, fontWeight: FontWeight.w500)),
+                  Text('COLOR${_selectedColor != null ? " : ${_selectedColor!.toUpperCase()}" : ""}', style: const TextStyle(fontFamily: 'DMSans', fontSize: 9, letterSpacing: 0.4, color: AppColors.textMuted2, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8, runSpacing: 8,
@@ -354,8 +356,56 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             child: Text(product.description!, style: const TextStyle(fontFamily: 'DMSans', fontSize: 13, color: AppColors.textMuted, height: 1.7)))
                         : const SizedBox.shrink(),
                   ),
-                  const Divider(color: AppColors.borderDark),
                 ],
+
+                // Details & Materials accordion
+                const Divider(color: AppColors.borderDark),
+                GestureDetector(
+                  onTap: () => setState(() => _detailsExpanded = !_detailsExpanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(children: [
+                      const Text('DETAILS & MATERIALS', style: TextStyle(fontFamily: 'DMSans', fontSize: 11, letterSpacing: 0.22, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                      const Spacer(),
+                      AnimatedRotation(turns: _detailsExpanded ? 0.125 : 0, duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.add, size: 16, color: AppColors.textDim)),
+                    ]),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  child: _detailsExpanded
+                      ? Padding(padding: const EdgeInsets.only(bottom: 16),
+                          child: Text('100% premium cotton. Garment dyed. Oversized fit. Crafted for longevity.', style: TextStyle(fontFamily: 'DMSans', fontSize: 13, color: AppColors.textMuted, height: 1.7)))
+                      : const SizedBox.shrink(),
+                ),
+
+                // Shipping & Returns accordion
+                const Divider(color: AppColors.borderDark),
+                GestureDetector(
+                  onTap: () => setState(() => _shippingExpanded = !_shippingExpanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(children: [
+                      const Text('SHIPPING & RETURNS', style: TextStyle(fontFamily: 'DMSans', fontSize: 11, letterSpacing: 0.22, color: AppColors.textMuted, fontWeight: FontWeight.w500)),
+                      const Spacer(),
+                      AnimatedRotation(turns: _shippingExpanded ? 0.125 : 0, duration: const Duration(milliseconds: 200),
+                          child: const Icon(Icons.add, size: 16, color: AppColors.textDim)),
+                    ]),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  child: _shippingExpanded
+                      ? Padding(padding: const EdgeInsets.only(bottom: 16),
+                          child: Text('Free shipping on orders over 500,000₫. Free returns within 14 days.', style: TextStyle(fontFamily: 'DMSans', fontSize: 13, color: AppColors.textMuted, height: 1.7)))
+                      : const SizedBox.shrink(),
+                ),
+                const Divider(color: AppColors.borderDark),
                 const SizedBox(height: 36),
               ],
             ),
@@ -381,11 +431,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 (_, i) => ProductCard(product: prods[i], onTap: () => ctx.push('/product/${prods[i].id}')),
                 childCount: prods.length,
               ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.62),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.58),
             ),
             loading: () => SliverGrid(
               delegate: SliverChildBuilderDelegate((_, _) => const ProductCardShimmer(), childCount: 4),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.62),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.58),
             ),
             error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
           ),

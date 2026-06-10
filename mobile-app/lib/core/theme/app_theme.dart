@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData get dark {
-    final base = ThemeData.dark();
+    final base = ThemeData.light(); // Changed base to light theme
     return base.copyWith(
       scaffoldBackgroundColor: AppColors.background,
-      primaryColor: AppColors.white,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.white,
+      primaryColor: AppColors.textPrimary,
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.textPrimary,
         secondary: AppColors.accent,
         surface: AppColors.surface,
         error: AppColors.error,
@@ -18,11 +19,11 @@ class AppTheme {
         onSurface: AppColors.textPrimary,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: SystemUiOverlayStyle.dark, // Dark status bar icons for light background
         titleTextStyle: _displayStyle(fontSize: 22, letterSpacing: 0.14),
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
@@ -31,13 +32,13 @@ class AppTheme {
       elevatedButtonTheme: _buildElevatedButtonTheme(),
       outlinedButtonTheme: _buildOutlinedButtonTheme(),
       dividerTheme: const DividerThemeData(
-        color: AppColors.borderDark,
+        color: AppColors.border,
         thickness: 1,
         space: 0,
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.backgroundDark,
-        selectedItemColor: AppColors.white,
+        backgroundColor: AppColors.background,
+        selectedItemColor: AppColors.textPrimary,
         unselectedItemColor: AppColors.textDim,
         showSelectedLabels: true,
         showUnselectedLabels: true,
@@ -54,8 +55,7 @@ class AppTheme {
   }
 
   static TextStyle _displayStyle({double fontSize = 16, double letterSpacing = 0.12}) {
-    return TextStyle(
-      fontFamily: 'BebasNeue',
+    return GoogleFonts.bebasNeue(
       fontSize: fontSize,
       color: AppColors.textPrimary,
       letterSpacing: letterSpacing,
@@ -63,8 +63,7 @@ class AppTheme {
   }
 
   static TextStyle _bodyStyle({double fontSize = 14, FontWeight weight = FontWeight.w400}) {
-    return TextStyle(
-      fontFamily: 'DMSans',
+    return GoogleFonts.beVietnamPro(
       fontSize: fontSize,
       color: AppColors.textPrimary,
       fontWeight: weight,
@@ -101,18 +100,21 @@ class AppTheme {
         borderSide: BorderSide(color: AppColors.border),
       ),
       focusedBorder: const UnderlineInputBorder(
-        borderSide: BorderSide(color: AppColors.textDim),
+        borderSide: BorderSide(color: AppColors.textPrimary),
       ),
       errorBorder: const UnderlineInputBorder(
         borderSide: BorderSide(color: AppColors.error),
       ),
-      hintStyle: const TextStyle(
-        fontFamily: 'DMSans',
+      hintStyle: GoogleFonts.beVietnamPro(
         fontSize: 12,
         color: AppColors.textDisabled,
         letterSpacing: 0.1,
       ),
-      labelStyle: const TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textMuted2, letterSpacing: 0.14),
+      labelStyle: GoogleFonts.beVietnamPro(
+        fontSize: 11,
+        color: AppColors.textMuted2,
+        letterSpacing: 0.14,
+      ),
       contentPadding: const EdgeInsets.symmetric(vertical: 12),
     );
   }
@@ -125,8 +127,7 @@ class AppTheme {
         minimumSize: const Size(double.infinity, 48),
         shape: const RoundedRectangleBorder(),
         elevation: 0,
-        textStyle: const TextStyle(
-          fontFamily: 'DMSans',
+        textStyle: GoogleFonts.beVietnamPro(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.22,
@@ -142,8 +143,7 @@ class AppTheme {
         side: const BorderSide(color: AppColors.border),
         minimumSize: const Size(double.infinity, 48),
         shape: const RoundedRectangleBorder(),
-        textStyle: const TextStyle(
-          fontFamily: 'DMSans',
+        textStyle: GoogleFonts.beVietnamPro(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.16,

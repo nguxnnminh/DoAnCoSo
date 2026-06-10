@@ -42,10 +42,10 @@ class ProductCard extends StatelessWidget {
                   top: 12, left: 12,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: const BoxDecoration(color: Color(0xCC0D0D0D)),
+                    decoration: const BoxDecoration(color: Color(0xFFF4F4F5)),
                     child: Text(
                       (product.categoryName ?? '').toUpperCase(),
-                      style: const TextStyle(fontFamily: 'DMSans', fontSize: 8, letterSpacing: 0.18, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontFamily: 'DMSans', fontSize: 8, letterSpacing: 0.18, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ),
@@ -59,6 +59,13 @@ class ProductCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontFamily: 'DMSans', fontSize: 13, color: AppColors.textPrimary, fontWeight: FontWeight.w400, letterSpacing: 0.02),
           ),
+          if (product.subCategoryName != null && product.subCategoryName!.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              product.subCategoryName!.toUpperCase(),
+              style: const TextStyle(fontFamily: 'DMSans', fontSize: 9, color: AppColors.textMuted2, letterSpacing: 0.08, fontWeight: FontWeight.w500),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             formatPrice(product.minPrice),

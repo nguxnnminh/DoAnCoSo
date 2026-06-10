@@ -6,13 +6,13 @@
 
       <!-- CHECK ICON -->
       <div class="w-14 h-14 border border-zinc-800 flex items-center justify-center mx-auto mb-10 md:mb-12">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6dbf6d" stroke-width="1.5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1c1b19" stroke-width="1.5">
           <path d="M5 13l4 4L19 7"/>
         </svg>
       </div>
 
       <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-3">Confirmed</p>
-      <h1 class="font-display text-5xl md:text-6xl tracking-wide leading-none text-[#f5f5f3] mb-4">Order Placed</h1>
+      <h1 class="font-display text-5xl md:text-6xl tracking-wide leading-none text-[#1c1b19] mb-4">Order Placed</h1>
       <p class="text-sm text-zinc-500 leading-loose mb-12">
         Thank you for shopping with Nova.<br>Your order is being processed.
       </p>
@@ -23,16 +23,16 @@
         <div class="flex flex-col gap-4">
           <div class="flex justify-between">
             <span class="text-xs tracking-widest uppercase text-zinc-500">Order ID</span>
-            <span class="text-xs text-[#c0c0bc]" th:text="'#'+${order.id}"></span>
+            <span class="text-xs text-[#1c1b19]" th:text="'#'+${order.id}"></span>
           </div>
           <div class="flex justify-between">
             <span class="text-xs tracking-widest uppercase text-zinc-500">Total</span>
-            <span class="text-xs text-[#c0c0bc]"
+            <span class="text-xs text-[#1c1b19]"
                   th:text="${#numbers.formatDecimal(order.total,0,'POINT',0,'COMMA')}+' ₫'"></span>
           </div>
           <div class="flex justify-between">
             <span class="text-xs tracking-widest uppercase text-zinc-500">Status</span>
-            <span class="text-xs text-[#6dbf6d] tracking-widest uppercase" th:text="${order.status}"></span>
+            <span class="text-xs text-[#1c1b19] tracking-widest uppercase" th:text="${order.status}"></span>
           </div>
         </div>
       </div>
@@ -41,13 +41,13 @@
         <a th:href="@{/my-orders}"
            class="h-11 md:h-12 px-6 md:px-8 border border-zinc-700 text-zinc-500
                   text-xs tracking-widest uppercase no-underline flex items-center
-                  transition-all duration-200 hover:border-zinc-500 hover:text-[#c0c0bc]">
+                  transition-all duration-200 hover:border-zinc-500 hover:text-[#1c1b19]">
           My Orders
         </a>
         <a th:href="@{/products}"
-           class="h-11 md:h-12 px-6 md:px-8 bg-[#f5f5f3] text-[#0a0a0a]
+           class="h-11 md:h-12 px-6 md:px-8 bg-[#1c1b19] text-[#ffffff]
                   text-xs tracking-widest uppercase no-underline font-medium flex items-center
-                  transition-colors duration-200 hover:bg-[#d8d8d4]">
+                  transition-colors duration-200 hover:bg-[#1c1b19] hover:text-[#ffffff]">
           Keep Shopping
         </a>
       </div>

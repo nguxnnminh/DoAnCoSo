@@ -7,9 +7,9 @@ import 'router/app_router.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light.copyWith(
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark.copyWith(
     statusBarColor: Colors.transparent,
-    systemNavigationBarColor: const Color(0xFF0D0D0D),
+    systemNavigationBarColor: const Color(0xFFFFFFFF),
   ));
   runApp(const ProviderScope(child: NovaApp()));
 }

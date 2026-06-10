@@ -179,7 +179,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 2,
                               mainAxisSpacing: 20,
-                              childAspectRatio: 0.62,
+                              childAspectRatio: 0.58,
                             ),
                             itemCount: page.content.length,
                             itemBuilder: (_, i) => ProductCard(
@@ -199,7 +199,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
               loading: () => GridView.builder(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.62,
+                  crossAxisCount: 2, crossAxisSpacing: 2, mainAxisSpacing: 20, childAspectRatio: 0.58,
                 ),
                 itemCount: 6,
                 itemBuilder: (_, _) => const ProductCardShimmer(),

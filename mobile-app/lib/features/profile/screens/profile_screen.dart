@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,7 +115,27 @@ class ProfileScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(20),
           children: const [ShimmerBox(height: 72), SizedBox(height: 12), ShimmerBox(height: 20, width: 120)],
         ),
-        error: (_, _) => Center(child: Text('Error loading profile', style: TextStyle(fontFamily: 'DMSans', color: AppColors.error))),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Error loading profile', style: TextStyle(fontFamily: 'DMSans', color: AppColors.error)),
+                const SizedBox(height: 8),
+                Text(
+                  err is DioException
+                      ? 'HTTP ${err.response?.statusCode ?? '-'}: ${err.response?.data ?? err.message}'
+                      : err.toString(),
+                  style: TextStyle(fontFamily: 'DMSans', fontSize: 11, color: AppColors.textMuted2),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                NovaOutlineButton(label: 'Retry', onPressed: () => ref.invalidate(profileProvider)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

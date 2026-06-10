@@ -3,46 +3,87 @@
 
 <div th:fragment="content">
 <style>
+#announcementBar,
+#siteHeader,
+#mobileHeader {
+    display: none !important;
+}
+main {
+    padding-top: 0 !important;
+}
 .auth-input {
     width: 100%;
     background: transparent;
     border: none;
-    border-bottom: 1px solid #d0d0cc;
-    color: #0a0a0a;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.8rem;
+    border-bottom: 1px solid #d4d4d8;
+    color: #1c1b19;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    font-size: 1rem;
     letter-spacing: 0.05em;
     padding: 12px 0;
     outline: none;
     transition: border-color 0.2s;
 }
-.auth-input:focus { border-bottom-color: #0a0a0a; }
-.auth-input::placeholder { color: #aaa; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.auth-input:focus {
+    border-bottom-color: #71717a;
+    outline: none !important;
+    box-shadow: none !important;
+}
 .auth-label {
-    font-size: 0.55rem;
-    letter-spacing: 0.4em;
+    font-size: 0.78rem;
+    letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: #999;
+    color: #1c1b19;
     display: block;
     margin-bottom: 4px;
 }
+body:has(.auth-shell) #announcementBar,
+body:has(.auth-shell) #siteHeader,
+body:has(.auth-shell) #mobileHeader,
+body:has(.auth-shell) footer {
+    display: none !important;
+}
+.auth-shell { min-height: 100vh !important; background: #ffffff; }
+.auth-panel { width: min(100%, 560px) !important; }
+@media (max-width: 1279px) {
+    .auth-shell {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        min-height: 100vh !important;
+    }
+    .auth-panel {
+        width: 100% !important;
+        max-width: 480px !important;
+        min-height: auto !important;
+        padding: 48px 24px !important;
+        border-left: 0 !important;
+    }
+    .auth-panel > div:first-child { margin-bottom: 28px !important; }
+    .auth-panel h1 { font-size: 2.8rem !important; line-height: 1 !important; }
+    .auth-panel form { gap: 24px !important; }
+    .auth-label { letter-spacing: .25em; font-size: .78rem; }
+    .auth-input { font-size: 1rem; padding: 12px 0; }
+    .auth-input::placeholder { font-size: .78rem; }
+    .auth-panel button[type="submit"] { min-height: 48px; width: 100%; }
+}
 </style>
 
-<div style="min-height: calc(100vh - 72px); display:flex; align-items:stretch;">
+<div class="auth-shell" style="min-height: 100vh; display:flex; align-items:stretch;">
 
-    <!-- LEFT: BRANDING (dark) -->
-    <div style="flex: 1; background:#0d0d0d; display:flex; flex-direction:column; justify-content:flex-end; padding:64px; position:relative; overflow:hidden;" class="hidden lg:flex">
-        <div style="position:absolute; top:40px; left:48px; font-family:'Bebas Neue',sans-serif; font-size:0.7rem; letter-spacing:0.5em; color:#3a3a3a; text-transform:uppercase;"></div>
-        <div style="font-family:'Bebas Neue',sans-serif; font-size:7rem; line-height:0.85; letter-spacing:0.02em; color:#222; margin-bottom:48px; pointer-events:none; user-select:none;">NOVA<br>ESSENTIALS</div>
-        <p style="font-size:0.65rem; letter-spacing:0.2em; text-transform:uppercase; color:#555; line-height:2;">Streetwear for the<br>modern generation.</p>
+    <!-- LEFT: BRANDING (warm field) -->
+    <div style="flex: 1; background:#1c1b19; color:#ffffff; padding:64px; position:relative; overflow:hidden; border-right:1px solid #e4e4e7;" class="hidden xl:flex xl:flex-col xl:justify-end">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:7rem; line-height:0.85; letter-spacing:0.04em; color:#ffffff; margin-bottom:48px; pointer-events:none; user-select:none;">NOVA<br>ESSENTIALS</div>
+        <p style="font-size:0.78rem; font-weight:600; letter-spacing:0.2em; text-transform:uppercase; color:#ffffff; line-height:2;">Streetwear for the<br>modern generation.</p>
     </div>
 
     <!-- RIGHT: FORM (light) -->
-    <div style="width:min(100%, 480px); flex-shrink:0; display:flex; flex-direction:column; justify-content:center; padding:64px 56px; background:#f5f5f3; border-left:1px solid #e0e0dc;">
+    <div class="auth-panel" style="width:min(100%, 560px); flex-shrink:0; display:flex; flex-direction:column; justify-content:center; padding:64px 64px; background:#ffffff; border-left:1px solid #e4e4e7;">
 
         <div style="margin-bottom:48px;">
-            <p style="font-size:0.55rem; letter-spacing:0.45em; text-transform:uppercase; color:#aaa; margin-bottom:12px;">Join Nova</p>
-            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:3rem; letter-spacing:0.05em; line-height:1; color:#0a0a0a;">Create Account</h1>
+            <p style="font-size:0.78rem; letter-spacing:0.45em; text-transform:uppercase; color:#1c1b19; margin-bottom:12px;">Join Nova</p>
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:3rem; letter-spacing:0.05em; line-height:1; color:#1c1b19;">Create Account</h1>
         </div>
 
         <form method="post" th:action="@{/register}" id="regForm" style="display:flex; flex-direction:column; gap:32px;">
@@ -63,29 +104,29 @@
             <div>
                 <label class="auth-label" for="cpw">Confirm Password</label>
                 <input type="password" name="confirmPassword" id="cpw" placeholder="Repeat password" required autocomplete="new-password" class="auth-input" aria-describedby="pwErr" />
-                <p id="pwErr" role="alert" aria-live="assertive" style="font-size:0.6rem; letter-spacing:0.1em; color:#c05050; margin-top:8px; display:none;">Passwords do not match</p>
+                <p id="pwErr" role="alert" aria-live="assertive" style="font-size:0.8rem; letter-spacing:0.1em; color:#8a3e34; margin-top:8px; display:none;">Passwords do not match</p>
             </div>
 
             <button type="submit" id="subBtn" style="
-                background: #0a0a0a;
-                color: #f5f5f3;
+                background: #1c1b19;
+                color: #ffffff;
                 border: none;
                 padding: 16px;
-                font-family: 'DM Sans', sans-serif;
-                font-size: 0.65rem;
-                letter-spacing: 0.3em;
+                font-family: 'Be Vietnam Pro', sans-serif;
+                font-size:0.85rem;
+                letter-spacing: 0.25em;
                 text-transform: uppercase;
                 font-weight: 500;
                 cursor: pointer;
                 transition: background 0.25s;
                 margin-top: 8px;
-            " onmouseover="this.style.background='#333'" onmouseout="this.style.background='#0a0a0a'">Create Account</button>
+            " onmouseover="this.style.background='#000'" onmouseout="this.style.background='#1c1b19'">Create Account</button>
         </form>
 
-        <div style="margin-top:40px; padding-top:32px; border-top:1px solid #e0e0dc;">
-            <p style="font-size:0.6rem; letter-spacing:0.15em; text-transform:uppercase; color:#aaa; text-align:center;">
+        <div style="margin-top:40px; padding-top:32px; border-top:1px solid #e4e4e7;">
+            <p style="font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; color:#1c1b19; text-align:center;">
                 Already a member?
-                <a th:href="@{/login}" style="color:#0a0a0a; text-decoration:none; margin-left:8px; transition:color 0.2s;" onmouseover="this.style.color='#555'" onmouseout="this.style.color='#0a0a0a'">Sign In →</a>
+                <a th:href="@{/login}" style="color:#1c1b19; text-decoration:none; margin-left:8px; transition:color 0.2s;" onmouseover="this.style.color='#1c1b19'" onmouseout="this.style.color='#1c1b19'">Sign In →</a>
             </p>
         </div>
     </div>

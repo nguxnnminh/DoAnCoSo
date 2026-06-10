@@ -24,7 +24,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _autoPlayTimer;
 
   static const _slides = [
-    _Slide(eyebrow: 'Spring / Summer 2026', title: 'NEW\nDROP', sub: 'ESSENTIALS', action: '/shop', btnLabel: 'Shop New Arrivals', bg: '/images/winter-collection.jpg'),
+    _Slide(eyebrow: 'Spring / Summer 2026', title: 'NEW\nDROP', sub: 'ESSENTIALS', action: '/shop', btnLabel: 'Shop New Arrivals', bg: '/images/slider_1.jpg'),
     _Slide(eyebrow: 'Statement Layers', title: 'THE\nTOPS', sub: 'TEES · HOODIES · SHIRTS', action: '/shop', btnLabel: 'Explore Tops', bg: '/images/top.jpg'),
     _Slide(eyebrow: 'Built To Move', title: 'THE\nBOTTOMS', sub: 'PANTS · JEANS · SHORTS', action: '/shop', btnLabel: 'Explore Bottoms', bg: '/images/bottom.jpg'),
   ];
@@ -90,7 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           effect: const WormEffect(
                             dotWidth: 28, dotHeight: 3, radius: 0,
                             activeDotColor: AppColors.white,
-                            dotColor: Color(0x40F5F5F3),
+                            dotColor: Color(0x2B1C1B19),
                             spacing: 8,
                           ),
                         ),
@@ -249,14 +249,14 @@ class _HeroSlide extends StatelessWidget {
           imageUrl: '$baseUrl${slide.bg}',
           fit: BoxFit.cover,
           placeholder: (_, _) => Container(color: AppColors.surface),
-          errorWidget: (_, _, _) => Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]))),
+          errorWidget: (_, _, _) => Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFF4F4F5), Color(0xFFE4E4E7)]))),
         ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
               stops: [0.3, 0.75, 1.0],
-              colors: [Colors.transparent, Color(0xB8111111), Color(0xFF111111)],
+              colors: [Colors.transparent, Color(0xB8FFFFFF), Color(0xFFFFFFFF)],
             ),
           ),
         ),
@@ -295,7 +295,7 @@ class _ArrowBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
-        child: Container(width: 40, height: 40, color: const Color(0x59111111), child: Icon(icon, size: 16, color: AppColors.white)),
+        child: Container(width: 40, height: 40, color: const Color(0x121C1B19), child: Icon(icon, size: 16, color: AppColors.white)),
       );
 }
 
@@ -405,7 +405,7 @@ class _CategoryTile extends StatelessWidget {
         aspectRatio: 3 / 4,
         child: Stack(fit: StackFit.expand, children: [
           CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, placeholder: (_, _) => Container(color: AppColors.surface), errorWidget: (_, _, _) => Container(color: AppColors.surface)),
-          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, stops: [0, 0.5, 1], colors: [Color(0xD9111111), Color(0x33111111), Colors.transparent]))),
+          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, stops: [0, 0.5, 1], colors: [Color(0xD9FFFFFF), Color(0x33FFFFFF), Colors.transparent]))),
           Positioned(
             bottom: 20, left: 20, right: 20,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -3,20 +3,20 @@
 <div th:fragment="content">
   <style>
     .status-badge { display:inline-block; font-size:.5rem; letter-spacing:.25em; text-transform:uppercase; padding:5px 14px; border:1px solid; }
-    .status-PENDING        { border-color:#4a3a10; color:#c8a52b; }
+    .status-PENDING        { border-color:#1c1b19; color:#1c1b19; }
     .status-CONFIRMED,
     .status-PROCESSING     { border-color:#1a3a4a; color:#4a9bbf; }
     .status-SHIPPING       { border-color:#2a1a4a; color:#8a6dbf; }
     .status-COMPLETED      { border-color:#1a4a2a; color:#6dbf6d; }
     .status-CANCELLED         { border-color:#4a1a1a; color:#bf6d6d; }
-    .status-CANCEL_REQUESTED  { border-color:#4a3010; color:#c87a20; }
+    .status-CANCEL_REQUESTED  { border-color:#1c1b19; color:#1c1b19; }
 
     .star { font-size:1.2rem; cursor:pointer; color:#444; transition:color .2s; }
     .star.lit { color:#f5f5f3; }
 
     .review-input {
       width:100%; background:transparent; border:1px solid #303030; color:#f5f5f3;
-      padding:12px 14px; font-family:'DM Sans',sans-serif; font-size:.75rem; resize:none; outline:none;
+      padding:12px 14px; font-family:'Be Vietnam Pro',sans-serif; font-size:.75rem; resize:none; outline:none;
       transition:border-color .2s;
     }
     .review-input:focus { border-color:#777; }
@@ -60,8 +60,8 @@
     <!-- CANCEL REQUEST REVIEW BANNER -->
     <div th:if="${order.status?.name() == 'CANCEL_REQUESTED'}"
          class="mb-8 px-5 py-4 border flex flex-col gap-3"
-         style="border-color:#4a3010; background:rgba(200,122,32,0.05);">
-      <p class="text-[0.55rem] tracking-widest uppercase" style="color:#c87a20;">
+         style="border-color:#1c1b19; background:rgba(28,27,25,0.05);">
+      <p class="text-[0.55rem] tracking-widest uppercase" style="color:#1c1b19;">
         Cancellation Request Under Review
       </p>
       <p class="text-[0.65rem] text-zinc-500" th:if="${order.cancelReason != null and !order.cancelReason.isEmpty()}">
@@ -198,7 +198,7 @@
         <!-- REQUEST CANCELLATION (PROCESSING) -->
         <div th:if="${order.status?.name() == 'PROCESSING'}" class="mt-6 pt-5 border-t border-zinc-900">
           <button onclick="document.getElementById('cancelReqForm').classList.toggle('hidden')"
-            class="w-full py-2.5 bg-transparent border border-zinc-800 text-[0.55rem] tracking-widest uppercase text-zinc-500 cursor-pointer transition-all duration-200 hover:border-[#c87a20] hover:text-[#c87a20] font-body">
+            class="w-full py-2.5 bg-transparent border border-zinc-800 text-[0.55rem] tracking-widest uppercase text-zinc-500 cursor-pointer transition-all duration-200 hover:border-[#1c1b19] hover:text-[#1c1b19] font-body">
             Request Cancellation
           </button>
           <form id="cancelReqForm" th:action="@{/orders/{id}/cancel-request(id=${order.id})}" method="post"
@@ -208,8 +208,8 @@
               class="review-input mb-3" placeholder="Reason for cancellation (optional)…"></textarea>
             <button type="submit"
               class="w-full py-2.5 bg-transparent border text-[0.55rem] tracking-widest uppercase cursor-pointer transition-colors duration-200 font-body"
-              style="border-color:#4a3010; color:#c87a20;"
-              onmouseover="this.style.background='rgba(200,122,32,0.08)'"
+              style="border-color:#1c1b19; color:#1c1b19;"
+              onmouseover="this.style.background='rgba(28,27,25,0.08)'"
               onmouseout="this.style.background='transparent'">
               Submit Request
             </button>

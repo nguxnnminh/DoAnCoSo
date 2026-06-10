@@ -3,16 +3,16 @@
 <div th:fragment="content">
   <style>
     .n-field {
-      width:100%;background:transparent;border:none;border-bottom:1px solid #353535;
-      color:#e8e8e4;padding:13px 0;font-family:'DM Sans',sans-serif;font-size:.9rem;
+      width:100%;background:transparent;border:none;border-bottom:1px solid var(--c-hairline);
+      color:#1c1b19;padding:13px 0;font-family:'Be Vietnam Pro',sans-serif;font-size:.9rem;
       outline:none;transition:border-color .2s;letter-spacing:.03em;
     }
-    .n-field:focus { border-bottom-color:#d8c278; }
-    .n-field::placeholder { color:#777;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase; }
-    .n-label { font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:#aaa;display:block;margin-bottom:8px; }
+    .n-field:focus { border-bottom-color:var(--c-hairline-strong); }
+    .n-field::placeholder { color:#a1a1aa;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase; }
+    .n-label { font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:#1c1b19;display:block;margin-bottom:8px; }
     textarea.n-field { overflow:hidden; line-height:1.6; resize:none; }
-    #couponMsg.ok  { color:#6dbf6d; }
-    #couponMsg.err { color:#bf6d6d; }
+    #couponMsg.ok  { color:#1c1b19; }
+    #couponMsg.err { color:#8a3e34; }
 
     /* ===== COUPON RADIO CARDS ===== */
     .coupon-radio-list {
@@ -24,30 +24,30 @@
       padding-right: 4px;
     }
     .coupon-radio-list::-webkit-scrollbar { width: 3px; }
-    .coupon-radio-list::-webkit-scrollbar-thumb { background: #333; }
+    .coupon-radio-list::-webkit-scrollbar-thumb { background: var(--c-hairline-strong); }
 
     .coupon-radio-card {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 12px 14px;
-      border: 1px solid #1e1e1e;
-      background: #0a0a0a;
+      border:1px solid var(--c-hairline);
+      background:#fafafa;
       cursor: pointer;
       transition: all 0.2s;
       position: relative;
     }
-    .coupon-radio-card:hover { border-color: #333; background: #0f0f0f; }
+    .coupon-radio-card:hover { border-color:var(--c-hairline-strong); background:#f4f4f5; }
     .coupon-radio-card.selected {
-      border-color: #d8c278;
-      background: rgba(200,165,43,.08);
+      border-color: var(--c-hairline-strong);
+      background: transparent;
     }
 
     .coupon-radio-card input[type="radio"] {
       appearance: none;
       -webkit-appearance: none;
       width: 14px; height: 14px;
-      border: 1px solid #444;
+      border:1px solid var(--c-hairline-strong);
       border-radius: 50%;
       flex-shrink: 0;
       position: relative;
@@ -55,14 +55,14 @@
       transition: border-color 0.2s;
     }
     .coupon-radio-card input[type="radio"]:checked {
-      border-color: #f5f5f3;
+      border-color:var(--c-ink);
     }
     .coupon-radio-card input[type="radio"]:checked::after {
       content: '';
       position: absolute;
       top: 3px; left: 3px;
       width: 6px; height: 6px;
-      background: #f5f5f3;
+      background: var(--c-ink);
       border-radius: 50%;
     }
 
@@ -78,7 +78,7 @@
     .coupon-radio-value {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 1.1rem;
-      color: #f5f5f3;
+      color:#1c1b19;
       letter-spacing: 0.02em;
       line-height: 1;
     }
@@ -94,16 +94,16 @@
     }
 
     .coupon-radio-code {
-      font-size: 0.6rem;
+      font-size:0.7rem;
       letter-spacing: 0.15em;
-      color: #555;
+      color: #1c1b19;
       font-family: monospace;
       text-transform: uppercase;
     }
 
     .coupon-radio-desc {
-      font-size: 0.6rem;
-      color: #444;
+      font-size:0.7rem;
+      color: var(--c-ink-soft);
       margin-top: 2px;
       white-space: nowrap;
       overflow: hidden;
@@ -114,16 +114,16 @@
       font-size: 0.5rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #444;
+      color: var(--c-ink-soft);
       flex-shrink: 0;
       text-align: right;
     }
 
     .coupon-section-toggle {
-      font-size: 0.65rem;
+      font-size:0.72rem;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: #555;
+      color: #1c1b19;
       background: none;
       border: none;
       cursor: pointer;
@@ -133,17 +133,17 @@
       align-items: center;
       gap: 6px;
     }
-    .coupon-section-toggle:hover { color: #aaa; }
+    .coupon-section-toggle:hover { color: #1c1b19; }
 
     .manual-input-section {
       margin-top: 10px;
       padding-top: 10px;
-      border-top: 1px solid #1a1a1a;
+      border-top: 1px solid var(--c-hairline);
     }
 
     .checkout-assurance {
-      border:1px solid #303030;
-      background:#0d0d0d;
+      border:1px solid var(--c-hairline);
+      background:#fafafa;
       padding:16px;
       margin-bottom:28px;
     }
@@ -154,9 +154,9 @@
       margin-bottom:18px;
     }
     .checkout-step {
-      border:1px solid #242424;
+      border:1px solid var(--c-hairline);
       padding:10px;
-      color:#9f9f99;
+      color:var(--c-ink-soft);
       font-size:.68rem;
       letter-spacing:.1em;
       text-transform:uppercase;
@@ -164,7 +164,7 @@
     }
     .checkout-step strong {
       display:block;
-      color:#f0d36a;
+      color:var(--c-ink);
       font-weight:500;
       margin-bottom:4px;
     }
@@ -175,7 +175,7 @@
         position:sticky;
         bottom:12px;
         z-index:30;
-        box-shadow:0 16px 40px rgba(0,0,0,.5);
+        box-shadow:0 16px 40px rgba(22,20,15,0.14);
       }
     }
   </style>
@@ -186,7 +186,7 @@
     <div class="flex justify-between items-end mb-8 md:mb-12 border-b border-zinc-900 pb-6 md:pb-8">
       <div>
         <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-2">Final Step</p>
-        <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#f5f5f3]">Checkout</h1>
+        <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#1c1b19]">Checkout</h1>
       </div>
       <p class="text-xs tracking-widest uppercase text-zinc-500">
         <span th:text="${cartItems.size()}">0</span>&nbsp;Items
@@ -234,27 +234,27 @@
           </div>
 
           <div>
-            <label class="n-label" for="note">Order Note <span style="color:#777; font-size:.65rem;">(optional)</span></label>
+            <label class="n-label" for="note">Order Note <span style="color:var(--c-ink-soft); font-size:.65rem;">(optional)</span></label>
             <textarea id="note" class="n-field" name="note" rows="1"
                       maxlength="500" placeholder="Special instructions, gift message..."></textarea>
           </div>
 
           <div th:if="${error}"
-               class="border border-zinc-800 bg-zinc-900/60 text-zinc-500 text-xs tracking-widest uppercase px-4 py-3.5 leading-relaxed"
+               class="border border-[var(--c-error)] bg-[#fff] text-[var(--c-error)] text-xs tracking-widest uppercase px-4 py-3.5 leading-relaxed"
                role="alert" aria-live="assertive"
                th:text="${error}"></div>
 
-          <div class="border border-zinc-800/70 bg-[#0d0d0d] px-4 py-4">
-            <p class="text-xs tracking-widest uppercase text-[#c0c0bc] mb-2">Payment and delivery</p>
-            <p class="text-xs leading-relaxed text-zinc-500">
+          <div class="border border-[var(--c-hairline)] bg-zinc-50 px-4 py-4">
+            <p class="text-xs tracking-widest uppercase text-zinc-800 mb-2">Payment and delivery</p>
+            <p class="text-xs leading-relaxed text-zinc-600">
               Cash on delivery. Free shipping over 500k, 1-3 business day dispatch, and 14-day returns are applied automatically when eligible.
             </p>
           </div>
 
           <button type="submit"
-                  class="checkout-submit h-12 bg-[#f5f5f3] text-[#0a0a0a] border-none font-body
+                  class="checkout-submit h-12 bg-[#1c1b19] text-[#ffffff] border-none font-body
                          text-xs tracking-widest uppercase font-medium cursor-pointer
-                         transition-colors duration-200 hover:bg-[#d8d8d4]">
+                         transition-colors duration-200 hover:bg-[#1c1b19] hover:text-[#ffffff]">
             Place COD Order
           </button>
         </form>
@@ -268,14 +268,14 @@
         <div class="flex flex-col gap-4 mb-6 pb-6 border-b border-zinc-900">
           <div th:each="item : ${cartItems}" class="flex justify-between items-start gap-3">
             <div class="flex-1">
-              <p class="text-xs tracking-widest uppercase text-[#e0e0dc] mb-1"
+              <p class="text-[0.9rem] tracking-[0.12em] uppercase text-[#1c1b19] font-semibold leading-snug mb-1"
                  th:text="${item.productName}"></p>
               <p class="text-xs tracking-widest uppercase text-zinc-600">
                 <span th:text="${item.size}"></span>&nbsp;·&nbsp;<span
                   th:text="${item.color}"></span>&nbsp;·&nbsp;×<span th:text="${item.quantity}"></span>
               </p>
             </div>
-            <span class="text-xs text-zinc-500 whitespace-nowrap"
+            <span class="text-[0.88rem] tracking-[0.04em] text-[#1c1b19] font-semibold whitespace-nowrap"
                   th:text="${#numbers.formatDecimal(item.lineTotal,0,'POINT',0,'COMMA')}+' ₫'"></span>
           </div>
         </div>
@@ -327,7 +327,7 @@
                   <button type="button" id="applyCouponBtn"
                           class="h-[46px] px-4 bg-transparent border border-zinc-700 text-zinc-500
                                  text-xs tracking-widest uppercase cursor-pointer shrink-0
-                                 transition-all hover:border-zinc-500 hover:text-[#c0c0bc]">
+                                 transition-all hover:border-zinc-500 hover:text-[#1c1b19]">
                     Apply
                   </button>
                 </div>
@@ -337,8 +337,8 @@
 
           <!-- Manual input only (for guests or users with no coupons) -->
           <div th:if="${!isLoggedIn or #lists.isEmpty(availableCoupons)}">
-            <div th:if="${!isLoggedIn}" class="text-[0.6rem] tracking-widest uppercase text-zinc-600 mb-3">
-              <a th:href="@{/login}" class="text-zinc-500 hover:text-[#c0c0bc] transition-colors" style="text-decoration:underline;">Sign in</a> to view your discount codes
+            <div th:if="${!isLoggedIn}" class="text-[0.7rem] tracking-widest uppercase text-zinc-600 mb-3">
+              <a th:href="@{/login}" class="text-zinc-500 hover:text-[#1c1b19] transition-colors" style="text-decoration:underline;">Sign in</a> to view your discount codes
             </div>
             <div class="flex gap-2">
               <input id="couponInput" type="text" class="n-field flex-1"
@@ -348,7 +348,7 @@
               <button type="button" id="applyCouponBtn"
                       class="h-[46px] px-4 bg-transparent border border-zinc-700 text-zinc-500
                              text-xs tracking-widest uppercase cursor-pointer shrink-0
-                             transition-all hover:border-zinc-500 hover:text-[#c0c0bc]">
+                             transition-all hover:border-zinc-500 hover:text-[#1c1b19]">
                 Apply
               </button>
             </div>
@@ -367,13 +367,13 @@
 
           <!-- Discount row — hidden until a valid coupon is applied -->
           <div id="discountRow" class="flex justify-between" style="display:none!important">
-            <span class="text-xs tracking-widest uppercase text-[#6dbf6d]">Discount</span>
-            <span id="discountAmount" class="text-xs text-[#6dbf6d]"></span>
+            <span class="text-xs tracking-widest uppercase text-[#1c1b19]">Discount</span>
+            <span id="discountAmount" class="text-xs text-[#1c1b19]"></span>
           </div>
 
           <div class="flex justify-between">
             <span class="text-xs tracking-widest uppercase text-zinc-500">Shipping</span>
-            <span th:if="${shippingFee == 0}" class="text-xs text-[#6dbf6d]">Free</span>
+            <span th:if="${shippingFee == 0}" class="text-xs text-[#1c1b19]">Free</span>
             <span th:unless="${shippingFee == 0}" id="shippingDisplay" class="text-xs text-zinc-400"
                   th:text="${#numbers.formatDecimal(shippingFee,0,'POINT',0,'COMMA')}+' ₫'"></span>
           </div>
@@ -390,8 +390,8 @@
         <div class="h-px bg-zinc-900 mb-6"></div>
 
         <div class="flex justify-between">
-          <span class="text-xs tracking-widest uppercase text-[#c0c0bc]">Total</span>
-          <span id="totalDisplay" class="text-base text-[#f5f5f3]"
+          <span class="text-xs tracking-widest uppercase text-[#1c1b19]">Total</span>
+          <span id="totalDisplay" class="text-base text-[#1c1b19]"
                 th:text="${#numbers.formatDecimal(total + shippingFee,0,'POINT',0,'COMMA')}+' ₫'"></span>
         </div>
       </div>

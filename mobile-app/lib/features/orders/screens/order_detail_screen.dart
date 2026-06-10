@@ -55,13 +55,13 @@ class _BodyState extends State<_Body> {
 
   // Status labels/colors — mirrors desktop
   static const _statusColors = {
-    'PENDING': AppColors.accent,
-    'PROCESSING': Color(0xFF5B9BD5),
-    'SHIPPED': Color(0xFF8B8BDF),
-    'DELIVERED': AppColors.success,
-    'COMPLETED': AppColors.success,
-    'CANCELLED': AppColors.error,
-    'CANCEL_REQUESTED': AppColors.accent,
+    'PENDING': AppColors.textPrimary,
+    'PROCESSING': AppColors.textPrimary,
+    'SHIPPED': AppColors.textPrimary,
+    'DELIVERED': AppColors.textPrimary,
+    'COMPLETED': AppColors.textPrimary,
+    'CANCELLED': AppColors.textMuted2,
+    'CANCEL_REQUESTED': AppColors.textPrimary,
   };
   static const _statusLabels = {
     'PENDING': 'Pending',

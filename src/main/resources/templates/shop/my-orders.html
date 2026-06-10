@@ -10,13 +10,13 @@
       padding: 5px 13px;
       border: 1px solid;
     }
-    .status-PENDING        { border-color: #4a3a10; color: #c8a52b; background: rgba(200,165,43,0.06); }
+    .status-PENDING        { border-color: #1c1b19; color: #1c1b19; background: rgba(28,27,25,0.06); }
     .status-CONFIRMED,
-    .status-PROCESSING     { border-color: #1a3a4a; color: #5a9bbf; background: rgba(90,155,191,0.06); }
-    .status-SHIPPING       { border-color: #2a1a4a; color: #8a6dbf; background: rgba(138,109,191,0.06); }
-    .status-COMPLETED      { border-color: #1a4a2a; color: #6dbf6d; background: rgba(109,191,109,0.06); }
-    .status-CANCELLED         { border-color: #4a1a1a; color: #bf7070; background: rgba(191,112,112,0.06); }
-    .status-CANCEL_REQUESTED  { border-color: #4a3010; color: #c87a20; background: rgba(200,122,32,0.06); }
+    .status-PROCESSING     { border-color: #ffffff; color: #5a9bbf; background: rgba(90,155,191,0.06); }
+    .status-SHIPPING       { border-color: #ffffff; color: #8a6dbf; background: rgba(138,109,191,0.06); }
+    .status-COMPLETED      { border-color: #ffffff; color: #4f6b46; background: rgba(109,191,109,0.06); }
+    .status-CANCELLED         { border-color: #8a3e34; color: #8a3e34; background: rgba(191,112,112,0.06); }
+    .status-CANCEL_REQUESTED  { border-color: #1c1b19; color: #1c1b19; background: rgba(28,27,25,0.06); }
 
     .order-row {
       display: flex;
@@ -24,7 +24,7 @@
       gap: 16px;
       padding: 24px 12px;
       margin: 0 -12px;
-      border-bottom: 1px solid #252525;
+      border-bottom: 1px solid #1c1b19;
       border-radius: 3px;
       text-decoration: none;
       color: inherit;
@@ -41,7 +41,7 @@
     }
     .order-row:hover {
       background: rgba(245,245,243,0.025);
-      border-color: #333;
+      border-color: #ffffff;
     }
   </style>
 
@@ -51,7 +51,7 @@
     <div class="flex justify-between items-end mb-8 md:mb-12 border-b border-zinc-900 pb-6 md:pb-8">
       <div>
         <p class="text-xs tracking-widest3 uppercase text-zinc-600 mb-2">Account</p>
-        <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#f5f5f3]">My Orders</h1>
+        <h1 class="font-display text-4xl md:text-6xl tracking-wide leading-none text-[#1c1b19]">My Orders</h1>
       </div>
       <p class="text-xs tracking-widest uppercase text-zinc-500">
         <span th:text="${#lists.size(orders)}">0</span>&nbsp;Orders
@@ -63,8 +63,8 @@
       <p class="font-display text-5xl md:text-7xl tracking-wide text-zinc-700 mb-3">No Orders Yet</p>
       <p class="text-xs tracking-widest uppercase text-zinc-700 mb-8">You haven't placed any orders.</p>
       <a th:href="@{/products}"
-         class="h-11 md:h-12 px-8 bg-[#f5f5f3] text-[#0a0a0a] text-xs tracking-widest uppercase
-                no-underline font-medium inline-flex items-center transition-colors duration-200 hover:bg-[#d8d8d4]">
+         class="h-11 md:h-12 px-8 bg-[#1c1b19] text-[#ffffff] text-xs tracking-widest uppercase
+                no-underline font-medium inline-flex items-center transition-colors duration-200 hover:bg-[#1c1b19] hover:text-[#ffffff]">
         Browse Shop
       </a>
     </div>
@@ -75,22 +75,22 @@
 
         <div class="flex-1">
           <div class="flex items-center gap-4 mb-3 flex-wrap">
-            <span class="text-[0.78rem] tracking-widest uppercase text-[#e8e8e4]"
+            <span class="text-[0.84rem] tracking-widest uppercase text-[#1c1b19]"
               th:text="'Order #' + ${order.id}"></span>
             <span class="status-badge" th:classappend="'status-' + ${order.status.name()}"
               th:text="${order.status}"></span>
           </div>
-          <p class="text-[0.65rem] tracking-widest uppercase text-zinc-600 mb-1.5"
+          <p class="text-[0.76rem] tracking-widest uppercase text-zinc-600 mb-1.5"
             th:text="${#temporals.format(order.createdAt,'dd MMM yyyy · HH:mm')}"></p>
-          <p class="text-[0.65rem] tracking-widest uppercase text-zinc-600">
+          <p class="text-[0.76rem] tracking-widest uppercase text-zinc-600">
             <span th:text="${order.items.size()}"></span>&nbsp;item<span th:if="${order.items.size() > 1}">s</span>
           </p>
         </div>
 
         <div class="sm:text-right flex-shrink-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3">
-          <p class="text-[0.95rem] tracking-wide text-[#c0c0bc]"
+          <p class="text-[0.95rem] tracking-wide text-[#1c1b19]"
             th:text="${#numbers.formatDecimal(order.total,0,'POINT',0,'COMMA')} + ' ₫'"></p>
-          <span class="text-[0.6rem] tracking-widest uppercase text-zinc-600 flex items-center gap-1.5">
+          <span class="text-[0.7rem] tracking-widest uppercase text-zinc-600 flex items-center gap-1.5">
             View
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M5 12h14M12 5l7 7-7 7" />

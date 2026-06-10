@@ -58,11 +58,11 @@ class _OrderCard extends StatelessWidget {
   const _OrderCard({required this.order, required this.onTap});
 
   static const _statusColors = {
-    'PENDING': AppColors.accent,
-    'PROCESSING': Color(0xFF5B9BD5),
-    'SHIPPED': Color(0xFF8B8BDF),
-    'DELIVERED': AppColors.success,
-    'CANCELLED': AppColors.error,
+    'PENDING': AppColors.textPrimary,
+    'PROCESSING': AppColors.textPrimary,
+    'SHIPPED': AppColors.textPrimary,
+    'DELIVERED': AppColors.textPrimary,
+    'CANCELLED': AppColors.textMuted2,
   };
 
   static const _statusLabels = {

@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.shop.clothingstore.entity.Order;
 import com.shop.clothingstore.entity.OrderItem;
 import com.shop.clothingstore.entity.OrderStatus;
-import com.shop.clothingstore.entity.ProductVariant;
 import com.shop.clothingstore.entity.Review;
 import com.shop.clothingstore.entity.User;
 import com.shop.clothingstore.repository.OrderItemRepository;

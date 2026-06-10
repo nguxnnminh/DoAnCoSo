@@ -29,6 +29,12 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Reduce CUDA allocator fragmentation on the 4GB 3050Ti. Must be set before torch
+# first touches CUDA. expandable_segments lets the allocator grow/reuse one big block
+# instead of pinning many fixed blocks — this is the main reason our two same-size
+# passes were spilling (2.7s/step instead of ~2s/step). No effect on output.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 # Load .env
 _env_file = Path(__file__).parent / ".env"
 if _env_file.exists():
@@ -64,9 +70,12 @@ NUM_STEPS = int(os.getenv("TRYON_STEPS", "16"))
 GUIDANCE = float(os.getenv("TRYON_CFG", "2.5"))
 # Scheduler: 'ddim' (CatVTON default, safe) | 'unipc' | 'dpm' (both converge faster at low steps)
 SCHEDULER = os.getenv("TRYON_SCHEDULER", "unipc").lower()
-# Parser on cuda → avoids CPU-GPU tensor transfer on every parse call.
-# The 3050Ti has enough VRAM (4GB fp16) even with parser loaded alongside diffusion.
-PARSER_DEVICE = os.getenv("TRYON_PARSER_DEVICE", "cuda")
+# Parser on CPU by default. On the 4GB 3050Ti the parser resident on CUDA pushes VRAM
+# to ~3.9/4.0 GB (measured), leaving the diffusion allocator no headroom → fragmentation
+# + thermal throttling that made every outfit after the first ~2x slower. SegFormer parse
+# costs ~1s on CPU but runs ONCE per outfit, so the steadier diffusion clocks win overall.
+# Override with TRYON_PARSER_DEVICE=cuda if you have VRAM to spare.
+PARSER_DEVICE = os.getenv("TRYON_PARSER_DEVICE", "cpu")
 PARSER_MODEL = os.getenv("TRYON_PARSER_MODEL", "mattmdjaga/segformer_b2_clothes")
 
 _use_local_fallback = False
@@ -111,12 +120,23 @@ def _load_catvton():
         skip_safety_check=True,
         use_tf32=True,
     )
-    # VRAM relief on 4GB: slice/tile the VAE so the 768x2048 concat decode doesn't spike OOM
+    # VRAM relief on 4GB: VAE slicing splits the 768x2048 concat decode into per-sample
+    # chunks so it doesn't spike OOM. Tiling (splitting each sample into spatial tiles) is
+    # NOT needed here — at batch=1 slicing alone fits, and tiling is slower (tile seams +
+    # extra passes). Dropping it shaves the decode without touching pixels.
     try:
         pipe.vae.enable_slicing()
-        pipe.vae.enable_tiling()
     except Exception as e:
-        log.warning("VAE slicing/tiling unavailable: %s", e)
+        log.warning("VAE slicing unavailable: %s", e)
+
+    # channels_last is the native layout for cuDNN fp16 conv kernels on Ampere — same math,
+    # fewer layout transposes per step. UNet + VAE only; bit-identical output.
+    try:
+        pipe.unet = pipe.unet.to(memory_format=torch.channels_last)
+        pipe.vae = pipe.vae.to(memory_format=torch.channels_last)
+        log.info("channels_last memory format enabled (unet+vae)")
+    except Exception as e:
+        log.warning("channels_last unavailable: %s", e)
 
     # xformers memory-efficient attention for self-attention (attn1) only.
     # CatVTON uses SkipAttnProcessor on all attn2 (cross-attention) to nullify text
@@ -316,9 +336,13 @@ def _catvton_infer(
     num_steps: int = NUM_STEPS,
     person_proc: Image.Image = None,
     mask: Image.Image = None,
+    infer_w: int = INFER_W,
+    infer_h: int = INFER_H,
 ):
     """Run one CatVTON pass. Returns (result_img, person_proc, mask).
-    person_proc/mask may be passed in to reuse across an outfit's two passes."""
+    person_proc/mask may be passed in to reuse across an outfit's two passes.
+    infer_w/infer_h let the caller shrink the working resolution (e.g. a half-height
+    band crop) — the UNet denoises a smaller latent → proportionally faster, SAME steps."""
     global _cuda_generator
     import torch
     import sys
@@ -328,7 +352,7 @@ def _catvton_infer(
 
     pipe = _load_catvton()
     if person_proc is None:
-        person_proc = resize_and_crop(person_img.convert("RGB"), (INFER_W, INFER_H))
+        person_proc = resize_and_crop(person_img.convert("RGB"), (infer_w, infer_h))
     if mask is None:
         mask = _build_mask(person_proc, category)
 
@@ -343,8 +367,8 @@ def _catvton_infer(
             mask=mask,
             num_inference_steps=num_steps,
             guidance_scale=GUIDANCE,
-            height=INFER_H,
-            width=INFER_W,
+            height=infer_h,
+            width=infer_w,
             generator=_cuda_generator,
         )
     out = result[0] if isinstance(result, list) else result
@@ -370,6 +394,52 @@ def _local_tryon_sync(
     return buf.getvalue()
 
 
+# Outfit band split (fraction of person height). The two bands OVERLAP across the
+# waistline so neither garment is clipped at the seam; each pass still uses its own
+# agnostic mask, so the overlap only widens the canvas, it doesn't double-paint.
+#
+# Band height = the frame the GARMENT condition image gets padded into. Too short and
+# the garment is downscaled → texture/print detail blurs. These values (~720-737px) keep
+# each pass at ~0.70-0.72x of the full 1024 frame: garment detail largely preserved,
+# still ~1.4x faster than a full-frame pass.
+BAND_UPPER_BOTTOM = 0.72   # upper pass covers rows [0 .. 0.72·H)
+BAND_LOWER_TOP    = 0.30   # lower pass covers rows [0.30·H .. H)
+
+
+def _snap8(v: int) -> int:
+    """VAE needs dims divisible by 8."""
+    return max(8, (v // 8) * 8)
+
+
+def _run_band(person_proc, garment_img, category, full_mask, top_px, bot_px):
+    """Run one CatVTON pass on a horizontal BAND of the full-res person instead of the
+    whole 768x1024 frame. Denoising a shorter latent is proportionally less UNet work per
+    step — SAME step count, SAME guidance. The PERSON region keeps full pixel density
+    (it's a crop, not a downscale). The GARMENT condition image, though, is padded into
+    the band frame, so a shorter band downscales the garment a little — see BAND_* for the
+    speed/garment-detail trade-off.
+
+    Returns a full-size (INFER_W x INFER_H) RGB image with the band result pasted back
+    into place over a copy of person_proc."""
+    band_h = _snap8(bot_px - top_px)
+    bot_px = top_px + band_h  # keep crop box consistent with the snapped height
+
+    person_band = person_proc.crop((0, top_px, INFER_W, bot_px))
+    mask_band = full_mask.crop((0, top_px, INFER_W, bot_px))
+
+    res_band, _, _ = _catvton_infer(
+        None, garment_img, category,
+        person_proc=person_band, mask=mask_band,
+        infer_w=INFER_W, infer_h=band_h,
+    )
+    # The pipeline resize_and_crop's the band to (INFER_W, band_h); paste it straight back.
+    if res_band.size != (INFER_W, band_h):
+        res_band = res_band.resize((INFER_W, band_h), Image.LANCZOS)
+    full = person_proc.copy()
+    full.paste(res_band, (0, top_px))
+    return full
+
+
 def _local_outfit_sync(
     person_bytes: bytes,
     top_bytes: bytes,
@@ -377,9 +447,11 @@ def _local_outfit_sync(
     top_desc: str = "",
     bottom_desc: str = "",
 ) -> bytes:
-    """Full outfit, the CORRECT way: parse the person ONCE, run two CatVTON passes
-    on the ORIGINAL person (upper + lower), then composite each garment region back
-    onto the crisp original. No chaining → no JPEG/denoise damage, no overlap."""
+    """Full outfit: parse the person ONCE, then run two CatVTON passes — each on only its
+    own horizontal BAND of the original person (upper torso / lower legs) — and composite
+    each garment region back onto the crisp original. Banding ~halves each pass's latent
+    (→ ~half the time) without touching step count, guidance, or per-region resolution.
+    No chaining → no JPEG/denoise damage, no overlap double-paint."""
     import sys
     from PIL import ImageFilter
     if CATVTON_SRC not in sys.path:
@@ -396,19 +468,20 @@ def _local_outfit_sync(
     upper_mask, lower_mask = _build_both_masks(person_proc)
     log.info("Outfit masks ready in %.1fs", time.time() - t0)
 
-    import torch
-    t1 = time.time()
-    res_up, _, _ = _catvton_infer(person_img, top_img, "upper_body",
-                                  person_proc=person_proc, mask=upper_mask)
-    log.info("CatVTON upper done in %.1fs", time.time() - t1)
-    torch.cuda.empty_cache()   # free fragmented VRAM before second pass
-    t2 = time.time()
-    res_lo, _, _ = _catvton_infer(person_img, bottom_img, "lower_body",
-                                  person_proc=person_proc, mask=lower_mask)
-    log.info("CatVTON lower done in %.1fs", time.time() - t2)
-    torch.cuda.empty_cache()
+    up_bot = int(INFER_H * BAND_UPPER_BOTTOM)   # upper band: rows [0 .. up_bot)
+    lo_top = int(INFER_H * BAND_LOWER_TOP)       # lower band: rows [lo_top .. H)
 
-    # Composite: take only each garment region (feathered) onto the original person
+    t1 = time.time()
+    res_up = _run_band(person_proc, top_img, "upper_body", upper_mask, 0, up_bot)
+    log.info("CatVTON upper band done in %.1fs", time.time() - t1)
+    # NOTE: deliberately NO empty_cache() here — expandable_segments (set at import) keeps
+    # fragmentation in check, and re-requesting VRAM each pass only adds re-init latency.
+    t2 = time.time()
+    res_lo = _run_band(person_proc, bottom_img, "lower_body", lower_mask, lo_top, INFER_H)
+    log.info("CatVTON lower band done in %.1fs", time.time() - t2)
+
+    # Composite: take only each garment region (feathered) onto the original person.
+    # Masks are full-frame; the band paste-back already aligned each result to person_proc.
     final = person_proc.copy()
     final = Image.composite(res_up, final, upper_mask.filter(ImageFilter.GaussianBlur(4)))
     final = Image.composite(res_lo, final, lower_mask.filter(ImageFilter.GaussianBlur(4)))
@@ -524,21 +597,35 @@ async def run_tryon(person_bytes, garment_bytes, category="upper_body", descript
 
 # ── FastAPI ───────────────────────────────────────────────────────────────────
 def _warmup_cuda():
-    """Run a 1-step pass at full inference resolution so CUDA kernels are
-    compiled and cached before the first real request. Takes ~5-8s but saves
-    ~20s on the first real request (no cold-start kernel compilation)."""
+    """Run a 1-step pass at each resolution we actually infer at (full single-garment
+    frame + the two outfit band heights) so CUDA kernels are compiled and cached before
+    the first real request. Warming the band shapes too means the cuDNN autotune + alloc
+    blocks for the real outfit path are ready, not just the full frame.
+
+    Then release ALL scratch once: with the parser also resident, the 4GB card has almost
+    no spare VRAM, so handing warm-up buffers back to the driver before real traffic cuts
+    the fragmentation that was making later outfits throttle/slow."""
     try:
         import torch
         pipe = _load_catvton()
-        dummy = Image.new("RGB", (INFER_W, INFER_H), (128, 128, 128))
-        mask  = Image.new("L",   (INFER_W, INFER_H), 128)
-        with torch.inference_mode():
-            pipe(image=dummy, condition_image=dummy, mask=mask,
-                 num_inference_steps=1, guidance_scale=GUIDANCE,
-                 height=INFER_H, width=INFER_W)
+        # Heights we run at: full single-garment frame, and the two outfit bands.
+        heights = {
+            INFER_H,
+            _snap8(int(INFER_H * BAND_UPPER_BOTTOM)),
+            _snap8(INFER_H - int(INFER_H * BAND_LOWER_TOP)),
+        }
+        for h in heights:
+            dummy = Image.new("RGB", (INFER_W, h), (128, 128, 128))
+            mask  = Image.new("L",   (INFER_W, h), 128)
+            with torch.inference_mode():
+                pipe(image=dummy, condition_image=dummy, mask=mask,
+                     num_inference_steps=1, guidance_scale=GUIDANCE,
+                     height=h, width=INFER_W)
+        # One-time release AFTER parser + pipeline + all warm-up shapes are resident, so
+        # the first real request starts from the least-fragmented heap we can give it.
         import gc; gc.collect()
         torch.cuda.empty_cache()
-        log.info("CUDA warm-up complete")
+        log.info("CUDA warm-up complete (heights=%s)", sorted(heights))
     except Exception as e:
         log.warning("CUDA warm-up failed (%s) — first request will be slower", e)
 
